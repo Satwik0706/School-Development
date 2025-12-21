@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>School Management Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e8f5e9, #f1f8ff);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            padding: 25px 0;
+            background: #ffffff;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: #2e7d32;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+
+        .notice {
+            width: 100%;
+            background: #4CAF50;
+            color: #fff;
+            text-align: center;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+        }
+
+        .login-box {
+            margin-top: 50px;
+            width: 360px;
+            padding: 35px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .login-box h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 18px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76,175,80,0.5);
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #43a047, #66bb6a);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button[type="submit"]:hover {
+            background: linear-gradient(135deg, #388e3c, #4caf50);
+        }
+
+        button[type="submit"]:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 14px;
+        }
+
+        .register-link a {
+            color: #1565c0;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            color: #2e7d32;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            display: none;
+        }
+
+        @media (max-width: 420px) {
+            .login-box {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        School Management Portal
+    </div>
+
+    <div class="notice">
+        Welcome! Please login to access your dashboard
+    </div>
+
+    <div class="login-box">
+        <h2>Login</h2>
+        <div class="error" id="errorMsg"></div>
+        <div class="success" id="successMsg"></div>
+        
+        <form id="loginForm">
+            <label>Username / School ID</label>
+            <input type="text" id="username" name="username" required placeholder="Enter your School ID">
+
+            <label>Password</label>
+            <input type="password" id="password" name="pwd" required placeholder="Enter your password">
+
+            <button type="submit" id="loginBtn">Login</button>
+        </form>
+
+        <div class="register-link">
+            <a href="p2.html">Don't have an account? Register School</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        
+        const loginForm = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const loginBtn = document.getElementById('loginBtn');
+
+        // Check if already logged in
+        if (localStorage.getItem('token')) {
+            window.location.href = 'project_selection.html';
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Hide messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Disable button
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
+            try {
+                // Try admin login
+                const response = await fetch(`${API_URL}/auth/login/admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        School_Id: username,
+                        School_password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+                
+                // Save token and user info
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('userType', 'admin');
+                localStorage.setItem('schoolId', data.schoolId);
+                localStorage.setItem('schoolName', data.schoolName);
+                
+                // Show success
+                successMsg.textContent = 'Login successful! Redirecting...';
+                successMsg.style.display = 'block';
+                
+                // Redirect after 1 second
+                setTimeout(() => {
+                    window.location.href = 'project_selection.html';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Login error:', error);
+                
+                // Show error
+                errorMsg.textContent = error.message || 'Invalid School ID or Password';
+                errorMsg.style.display = 'block';
+                
+                // Re-enable button
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+    </script>
+
+</body>
+</html>

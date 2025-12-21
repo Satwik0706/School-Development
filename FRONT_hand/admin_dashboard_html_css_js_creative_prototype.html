@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin Dashboard – Smart School Management</title>
+
+<style>
+:root{
+  --bg:#0a0f1f; --card:#ffffff;
+  --accent1:#6366f1; --accent2:#ec4899;
+  --accent3:#0ea5e9; --accent4:#f59e0b;
+  --muted:#6b7280; --radius:16px;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui;margin:0;padding:0}
+body{
+  background:linear-gradient(180deg,#0a0f1f,#111b33);
+  color:white
+}
+.container{max-width:1300px;margin:18px auto;padding:18px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+header h1{font-size:1.8rem;font-weight:800}
+
+.btn{
+  padding:10px 14px;border:none;border-radius:10px;
+  font-weight:600;cursor:pointer;transition:opacity 0.3s;
+}
+.btn.primary{
+  background:linear-gradient(90deg,var(--accent1),var(--accent3));
+  color:white
+}
+.btn.ghost{
+  background:rgba(255,255,255,0.08);color:white
+}
+.btn:hover{opacity:0.8}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+
+.layout{
+  margin-top:20px;
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:20px
+}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+}
+
+.sidebar{
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(6px);
+  padding:16px;
+  border-radius:var(--radius)
+}
+.side-title{font-size:0.85rem;opacity:0.9;margin-bottom:10px;font-weight:700}
+
+.nav-btn{
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.07);
+  color:white;
+  text-align:left;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:all 0.3s;
+}
+.nav-btn:hover{
+  background:rgba(255,255,255,0.08);
+}
+.nav-btn.active{
+  background:linear-gradient(90deg,var(--accent1),var(--accent2))
+}
+
+.content{
+  background:white;
+  color:#071326;
+  border-radius:var(--radius);
+  padding:20px;
+  min-height:620px
+}
+
+.section-title{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+.section-sub{color:var(--muted);font-size:0.92rem;margin-bottom:14px}
+
+.input, .select, .textarea{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border-radius:8px;
+  border:1px solid #d9e2ef;
+  background:#f5f8ff;
+  font-size:14px;
+}
+
+.textarea{
+  min-height:100px;
+  resize:vertical;
+  font-family:inherit;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:16px
+}
+@media(max-width:700px){
+  .grid{grid-template-columns:1fr}
+}
+
+.label{font-weight:600;margin-bottom:4px;font-size:0.9rem;display:block}
+
+.success-msg, .error-msg{
+  padding:12px;
+  border-radius:8px;
+  margin:10px 0;
+  display:none;
+}
+.success-msg{
+  background:#d1f4e0;
+  color:#0d7a3f;
+  border:1px solid #0d7a3f;
+}
+.error-msg{
+  background:#ffd4d4;
+  color:#c41e3a;
+  border:1px solid #c41e3a;
+}
+.success-msg.show, .error-msg.show{
+  display:block;
+}
+
+.data-list{
+  margin-top:20px;
+  max-height:400px;
+  overflow-y:auto;
+}
+.data-item{
+  padding:12px;
+  background:#f8faff;
+  border-radius:8px;
+  margin-bottom:8px;
+  border-left:4px solid var(--accent1);
+}
+.data-item strong{
+  color:var(--accent1);
+}
+
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin-bottom:20px;
+}
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+.stat-card{
+  background:linear-gradient(135deg,var(--accent1),var(--accent2));
+  padding:20px;
+  border-radius:12px;
+  color:white;
+}
+.stat-card h3{font-size:2rem;margin:8px 0}
+.stat-card p{opacity:0.9}
+
+.upload-area{
+  border:2px dashed var(--accent1);
+  border-radius:12px;
+  padding:40px;
+  text-align:center;
+  background:#f5f8ff;
+  cursor:pointer;
+  transition:all 0.3s;
+}
+.upload-area:hover{
+  background:#e8f0ff;
+  border-color:var(--accent2);
+}
+.upload-area.dragging{
+  background:#e0d4ff;
+  border-color:var(--accent1);
+}
+
+footer{
+  text-align:center;
+  color:rgba(255,255,255,0.35);
+  font-size:0.8rem;
+  margin-top:20px
+}
+
+.logout-btn{
+  background:#ef4444;
+  color:white;
+  padding:8px 16px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+}
+.logout-btn:hover{
+  background:#dc2626;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>🎓 Admin Dashboard – Smart School</h1>
+    <div style="font-size:0.9rem;opacity:0.8" id="schoolInfo">Loading...</div>
+  </div>
+  <button class="logout-btn" onclick="logout()">Logout</button>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="side-title">ADMIN TOOLS</div>
+  <button class="nav-btn active" onclick="loadPanel('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="loadPanel('teacher')">👨‍🏫 Create Teacher</button>
+  <button class="nav-btn" onclick="loadPanel('class')">🏫 Create Class</button>
+  <button class="nav-btn" onclick="loadPanel('student')">👨‍🎓 Create Student</button>
+  <button class="nav-btn" onclick="loadPanel('excel')">📊 Bulk Upload (Excel)</button>
+  <button class="nav-btn" onclick="loadPanel('teachers-list')">📋 View Teachers</button>
+  <button class="nav-btn" onclick="loadPanel('students-list')">📋 View Students</button>
+  <button class="nav-btn" onclick="loadPanel('classes-list')">📋 View Classes</button>
+  <button class="nav-btn" onclick="loadPanel('notify')">🔔 Push Notifications</button>
+  <button class="nav-btn" onclick="loadPanel('bus')">🚌 Bus Tracking</button>
+  <button class="nav-btn" onclick="loadPanel('analytics')">📈 Analytics</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content" id="panel">
+  <h2 class="section-title">Loading...</h2>
+  <p class="section-sub">Please wait...</p>
+</div>
+
+</div>
+
+<footer>Smart School Admin Panel © 2025 | All Features Connected</footer>
+</div>
+
+<script>
+const API_URL = 'http://localhost:5000/api';
+let token = localStorage.getItem('token');
+
+if (!token) {
+  alert('Please login first!');
+  window.location.href = 'project.html';
+}
+
+async function loadSchoolInfo() {
+  const schoolName = localStorage.getItem('schoolName') || 'School';
+  const schoolId = localStorage.getItem('schoolId') || '';
+  document.getElementById('schoolInfo').textContent = `${schoolName} (${schoolId})`;
+}
+
+function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.clear();
+    window.location.href = 'project.html';
+  }
+}
+
+function showSuccess(message) {
+  const msg = document.getElementById('successMsg');
+  if (msg) {
+    msg.textContent = message;
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 5000);
+  }
+}
+
+function showError(message) {
+  const msg = document.getElementById('errorMsg');
+  if (msg) {
+    msg.textContent = message;
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 5000);
+  }
+}
+
+async function apiCall(endpoint, method = 'GET', data = null) {
+  try {
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    
+    if (data && method !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+    
+    const response = await fetch(`${API_URL}${endpoint}`, options);
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Request failed');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
+
+function loadPanel(type) {
+  const el = document.getElementById('panel');
+  
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  if (type === 'dashboard') {
+    el.innerHTML = `
+    <h2 class='section-title'>📊 Dashboard Overview</h2>
+    <p class='section-sub'>Your school at a glance</p>
+    <div id='statsContainer'></div>`;
+    loadDashboard();
+  }
+
+  else if (type === 'teacher') {
+    el.innerHTML = `
+    <h2 class='section-title'>👨‍🏫 Create Teacher</h2>
+    <p class='section-sub'>Add teacher details and assign subjects.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    <div class='grid'>
+      <div><label class='label'>Teacher Name</label><input class='input' id='teacherName'></div>
+      <div><label class='label'>Password</label><input type='password' class='input' id='teacherPassword'></div>
+      <div><label class='label'>Subject</label><input class='input' id='teacherSubject'></div>
+      <div><label class='label'>Phone</label><input class='input' id='teacherPhone'></div>
+    </div>
+    <button class='btn primary' style='margin-top:14px' onclick='createTeacher()'>Create Teacher</button>`;
+  }
+
+  else if (type === 'class') {
+    el.innerHTML = `
+    <h2 class='section-title'>🏫 Create Class</h2>
+    <p class='section-sub'>Define a new class with teacher assignment.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    <div class='grid'>
+      <div><label class='label'>Class Name</label><input class='input' id='className' placeholder='e.g., 10A'></div>
+      <div><label class='label'>Class Teacher ID (Optional)</label><input class='input' id='classTeacher' placeholder='e.g., T1234567890 or leave empty'></div>
+    </div>
+    <button class='btn primary' style='margin-top:14px' onclick='createClass()'>Create Class</button>`;
+  }
+
+  else if (type === 'student') {
+    el.innerHTML = `
+    <h2 class='section-title'>👨‍🎓 Create Student</h2>
+    <p class='section-sub'>Add student details and parent information.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    <div class='grid'>
+      <div><label class='label'>Student Name</label><input class='input' id='studentName'></div>
+      <div><label class='label'>Roll No</label><input class='input' id='studentRoll'></div>
+      <div><label class='label'>Parent Phone</label><input class='input' id='parentPhone'></div>
+      <div><label class='label'>Class</label><input class='input' id='studentClass' placeholder='e.g., 10A'></div>
+    </div>
+    <button class='btn primary' style='margin-top:14px' onclick='createStudent()'>Create Student</button>`;
+  }
+
+  else if (type === 'excel') {
+    el.innerHTML = `
+    <h2 class='section-title'>📊 Bulk Upload Students (Excel)</h2>
+    <p class='section-sub'>Upload Excel file with student data for quick enrollment.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    
+    <div style='background:#fff8e1;padding:12px;border-radius:8px;margin:16px 0;border-left:4px solid #f59e0b'>
+      <strong>📋 Excel Format Required:</strong><br>
+      Columns: <code>name</code>, <code>rollNo</code>, <code>class</code>, <code>parentPhone</code><br>
+      Example: "John Doe", "101", "10A", "9876543210"
+    </div>
+    
+    <div class='upload-area' id='uploadArea' onclick='document.getElementById("excelFile").click()'>
+      <div style='font-size:3rem;margin-bottom:10px'>📄</div>
+      <h3>Click to Upload Excel File</h3>
+      <p style='margin-top:8px;color:var(--muted)'>or drag and drop here</p>
+      <p style='margin-top:4px;font-size:0.85rem;color:var(--muted)'>Supported: .xlsx, .xls (Max 10MB)</p>
+      <input type='file' id='excelFile' accept='.xlsx,.xls' style='display:none' onchange='uploadExcel(this)'>
+    </div>
+    
+    <div id='uploadStatus' style='margin-top:20px'></div>`;
+    
+    // Add drag and drop support
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragging');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragging');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragging');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        document.getElementById('excelFile').files = e.dataTransfer.files;
+        uploadExcel(document.getElementById('excelFile'));
+      }
+    });
+  }
+
+  else if (type === 'teachers-list') {
+    el.innerHTML = `
+    <h2 class='section-title'>📋 All Teachers</h2>
+    <p class='section-sub'>List of all registered teachers.</p>
+    <button class='btn primary' onclick='loadTeachers()'>Refresh List</button>
+    <div class='data-list' id='teachersList'>Loading...</div>`;
+    loadTeachers();
+  }
+
+  else if (type === 'students-list') {
+    el.innerHTML = `
+    <h2 class='section-title'>📋 All Students</h2>
+    <p class='section-sub'>List of all registered students.</p>
+    <button class='btn primary' onclick='loadStudents()'>Refresh List</button>
+    <div class='data-list' id='studentsList'>Loading...</div>`;
+    loadStudents();
+  }
+
+  else if (type === 'classes-list') {
+    el.innerHTML = `
+    <h2 class='section-title'>📋 All Classes</h2>
+    <p class='section-sub'>List of all classes.</p>
+    <button class='btn primary' onclick='loadClasses()'>Refresh List</button>
+    <div class='data-list' id='classesList'>Loading...</div>`;
+    loadClasses();
+  }
+
+  else if (type === 'notify') {
+    el.innerHTML = `
+    <h2 class='section-title'>🔔 Push Notifications</h2>
+    <p class='section-sub'>Send notifications to students, parents, or teachers.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    <div class='grid'>
+      <div>
+        <label class='label'>Target</label>
+        <select class='input' id='notifyTarget'>
+          <option value='students'>All Students</option>
+          <option value='parents'>Parents</option>
+          <option value='teachers'>Teachers</option>
+          <option value='all'>Everyone</option>
+        </select>
+      </div>
+      <div>
+        <label class='label'>Priority</label>
+        <select class='input' id='notifyPriority'>
+          <option value='normal'>Normal</option>
+          <option value='important'>Important</option>
+          <option value='emergency'>Emergency</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class='label'>Message</label>
+      <textarea class='textarea' id='notifyMessage' placeholder='Type your message...'></textarea>
+    </div>
+    <button class='btn primary' style='margin-top:14px' onclick='sendNotification()'>Send Notification</button>`;
+  }
+
+  else if (type === 'bus') {
+    el.innerHTML = `
+    <h2 class='section-title'>🚌 Bus Tracking</h2>
+    <p class='section-sub'>Update bus status and location.</p>
+    <div class='success-msg' id='successMsg'></div>
+    <div class='error-msg' id='errorMsg'></div>
+    <div class='grid'>
+      <div><label class='label'>Bus Number</label><input class='input' id='busNumber' placeholder='e.g., BUS-01'></div>
+      <div><label class='label'>Driver Name</label><input class='input' id='driverName'></div>
+      <div><label class='label'>Route</label><input class='input' id='busRoute'></div>
+      <div>
+        <label class='label'>Status</label>
+        <select class='input' id='busStatus'>
+          <option value='on-time'>On Time</option>
+          <option value='delayed'>Delayed</option>
+          <option value='arrived'>Arrived</option>
+        </select>
+      </div>
+    </div>
+    <button class='btn primary' style='margin-top:14px' onclick='updateBus()'>Update Bus Status</button>`;
+  }
+
+  else if (type === 'analytics') {
+    el.innerHTML = `
+    <h2 class='section-title'>📈 Analytics Dashboard</h2>
+    <p class='section-sub'>School statistics and insights.</p>
+    <button class='btn primary' onclick='loadAnalytics()'>Refresh Stats</button>
+    <div class='data-list' id='analyticsList'>Loading...</div>`;
+    loadAnalytics();
+  }
+}
+
+// ==================== API FUNCTIONS ====================
+
+async function loadDashboard() {
+  const container = document.getElementById('statsContainer');
+  container.innerHTML = '<p>Loading statistics...</p>';
+  
+  try {
+    const stats = await apiCall('/analytics/dashboard', 'GET');
+    
+    container.innerHTML = `
+      <div class='stats-grid'>
+        <div class='stat-card'>
+          <p>Total Students</p>
+          <h3>${stats.totalStudents}</h3>
+        </div>
+        <div class='stat-card' style='background:linear-gradient(135deg,var(--accent2),var(--accent3))'>
+          <p>Total Teachers</p>
+          <h3>${stats.totalTeachers}</h3>
+        </div>
+        <div class='stat-card' style='background:linear-gradient(135deg,var(--accent3),var(--accent4))'>
+          <p>Total Classes</p>
+          <h3>${stats.totalClasses}</h3>
+        </div>
+        <div class='stat-card' style='background:linear-gradient(135deg,var(--accent4),var(--accent1))'>
+          <p>Avg Attendance</p>
+          <h3>${stats.avgAttendance}%</h3>
+        </div>
+      </div>
+      <div class='data-item'>
+        <strong>System Status:</strong> All systems operational ✅<br>
+        <strong>Last Updated:</strong> ${new Date().toLocaleString()}
+      </div>
+    `;
+  } catch (error) {
+    container.innerHTML = `<div class='error-msg show'>Failed to load dashboard: ${error.message}</div>`;
+  }
+}
+
+async function createTeacher() {
+  const name = document.getElementById('teacherName').value.trim();
+  const password = document.getElementById('teacherPassword').value;
+  const subject = document.getElementById('teacherSubject').value.trim();
+  const phone = document.getElementById('teacherPhone').value.trim();
+  
+  if (!name || !password || !subject || !phone) {
+    showError('Please fill all fields!');
+    return;
+  }
+  
+  try {
+    const result = await apiCall('/teachers', 'POST', { name, password, subject, phone });
+    showSuccess(`✅ Teacher created successfully! Teacher ID: ${result.teacherId}`);
+    
+    document.getElementById('teacherName').value = '';
+    document.getElementById('teacherPassword').value = '';
+    document.getElementById('teacherSubject').value = '';
+    document.getElementById('teacherPhone').value = '';
+  } catch (error) {
+    showError('❌ ' + error.message);
+  }
+}
+
+async function createClass() {
+  const className = document.getElementById('className').value.trim();
+  const classTeacher = document.getElementById('classTeacher').value.trim();
+  
+  if (!className) {
+    showError('Please enter class name!');
+    return;
+  }
+  
+  try {
+    await apiCall('/classes', 'POST', { className, classTeacher: classTeacher || '' });
+    showSuccess('✅ Class created successfully!');
+    
+    document.getElementById('className').value = '';
+    document.getElementById('classTeacher').value = '';
+  } catch (error) {
+    showError('❌ ' + error.message);
+  }
+}
+
+async function createStudent() {
+  const name = document.getElementById('studentName').value.trim();
+  const rollNo = document.getElementById('studentRoll').value.trim();
+  const parentPhone = document.getElementById('parentPhone').value.trim();
+  const studentClass = document.getElementById('studentClass').value.trim();
+  
+  if (!name || !rollNo || !parentPhone || !studentClass) {
+    showError('Please fill all fields!');
+    return;
+  }
+  
+  try {
+    const result = await apiCall('/students', 'POST', { 
+      name, 
+      rollNo, 
+      parentPhone, 
+      class: studentClass 
+    });
+    showSuccess(`✅ Student created successfully! Student ID: ${result.studentId}`);
+    
+    document.getElementById('studentName').value = '';
+    document.getElementById('studentRoll').value = '';
+    document.getElementById('parentPhone').value = '';
+    document.getElementById('studentClass').value = '';
+  } catch (error) {
+    showError('❌ ' + error.message);
+  }
+}
+
+async function uploadExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const statusDiv = document.getElementById('uploadStatus');
+  statusDiv.innerHTML = '<p style="color:var(--accent1);font-weight:600">⏳ Uploading and processing...</p>';
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const response = await fetch(`${API_URL}/bulk-upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      showSuccess('✅ ' + result.message);
+      statusDiv.innerHTML = `
+        <div class='data-item' style='border-left-color:#4caf50'>
+          <strong>✅ Upload Successful!</strong><br>
+          ${result.message}<br>
+          ${result.errors ? `<br><strong style="color:#ef4444">Errors:</strong><br>${result.errors.join('<br>')}` : ''}
+        </div>
+      `;
+    } else {
+      showError('❌ ' + result.error);
+      statusDiv.innerHTML = `<div class='data-item' style='border-left-color:#ef4444'><strong>❌ Error:</strong> ${result.error}</div>`;
+    }
+  } catch (error) {
+    showError('❌ Upload failed: ' + error.message);
+    statusDiv.innerHTML = `<div class='data-item' style='border-left-color:#ef4444'><strong>❌ Error:</strong> ${error.message}</div>`;
+  }
+}
+
+async function loadTeachers() {
+  const list = document.getElementById('teachersList');
+  list.innerHTML = 'Loading...';
+  
+  try {
+    const teachers = await apiCall('/teachers', 'GET');
+    
+    if (teachers.length === 0) {
+      list.innerHTML = '<div class="data-item">No teachers found. Create one above!</div>';
+      return;
+    }
+    
+    list.innerHTML = teachers.map(t => `
+      <div class="data-item">
+        <strong>${t.name}</strong><br>
+        Teacher ID: ${t.teacherId}<br>
+        Subject: ${t.subject || 'N/A'}<br>
+        Phone: ${t.phone || 'N/A'}
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = '<div class="error-msg show">Failed to load teachers: ' + error.message + '</div>';
+  }
+}
+
+async function loadStudents() {
+  const list = document.getElementById('studentsList');
+  list.innerHTML = 'Loading...';
+  
+  try {
+    const students = await apiCall('/students', 'GET');
+    
+    if (students.length === 0) {
+      list.innerHTML = '<div class="data-item">No students found. Create one above!</div>';
+      return;
+    }
+    
+    list.innerHTML = students.map(s => `
+      <div class="data-item">
+        <strong>${s.name}</strong> (Roll: ${s.rollNo})<br>
+        Student ID: ${s.studentId}<br>
+        Class: ${s.class}<br>
+        Parent: ${s.parentPhone}<br>
+        Attendance: ${s.attendance}%
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = '<div class="error-msg show">Failed to load students: ' + error.message + '</div>';
+  }
+}
+
+async function loadClasses() {
+  const list = document.getElementById('classesList');
+  list.innerHTML = 'Loading...';
+  
+  try {
+    const classes = await apiCall('/classes', 'GET');
+    
+    if (classes.length === 0) {
+      list.innerHTML = '<div class="data-item">No classes found. Create one above!</div>';
+      return;
+    }
+    
+    list.innerHTML = classes.map(c => `
+      <div class="data-item">
+        <strong>${c.className}</strong><br>
+        Class Teacher: ${c.classTeacher || 'Not assigned'}<br>
+        Students: ${c.students ? c.students.length : 0}
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = '<div class="error-msg show">Failed to load classes: ' + error.message + '</div>';
+  }
+}
+
+async function sendNotification() {
+  const target = document.getElementById('notifyTarget').value;
+  const priority = document.getElementById('notifyPriority').value;
+  const message = document.getElementById('notifyMessage').value.trim();
+  
+  if (!message) {
+    showError('Please enter a message!');
+    return;
+  }
+  
+  try {
+    await apiCall('/notifications', 'POST', { target, priority, message });
+    showSuccess('✅ Notification sent successfully!');
+    document.getElementById('notifyMessage').value = '';
+  } catch (error) {
+    showError('❌ ' + error.message);
+  }
+}
+
+async function updateBus() {
+  const busNumber = document.getElementById('busNumber').value.trim();
+  const driverName = document.getElementById('driverName').value.trim();
+  const route = document.getElementById('busRoute').value.trim();
+  const status = document.getElementById('busStatus').value;
+  
+  if (!busNumber) {
+    showError('Please enter bus number!');
+    return;
+  }
+  
+  try {
+    await apiCall('/bus', 'POST', { 
+      busNumber, 
+      driverName, 
+      route, 
+      status,
+      location: { lat: 0, lng: 0 }
+    });
+    showSuccess('✅ Bus status updated successfully!');
+  } catch (error) {
+    showError('❌ ' + error.message);
+  }
+}
+
+async function loadAnalytics() {
+  const list = document.getElementById('analyticsList');
+  list.innerHTML = 'Loading...';
+  
+  try {
+    const stats = await apiCall('/analytics/dashboard', 'GET');
+    
+    list.innerHTML = `
+      <div class="data-item">
+        <strong>📊 School Statistics</strong><br><br>
+        Total Students: <strong>${stats.totalStudents}</strong><br>
+        Total Teachers: <strong>${stats.totalTeachers}</strong><br>
+        Total Classes: <strong>${stats.totalClasses}</strong><br>
+        Average Attendance: <strong>${stats.avgAttendance}%</strong>
+      </div>
+    `;
+  } catch (error) {
+    list.innerHTML = '<div class="error-msg show">Failed to load analytics: ' + error.message + '</div>';
+  }
+}
+
+loadSchoolInfo();
+loadPanel('dashboard');
+</script>
+
+</body>
+</html>

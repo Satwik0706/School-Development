@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Teacher Dashboard - Complete Enhanced</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#ffffff; --muted:#6b7280;
+      --accent1:#7c3aed; --accent2:#06b6d4; --accent3:#f97316; --accent4:#ef4444;
+      --glass: rgba(255,255,255,0.06);
+      --radius:14px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter, ui-sans-serif, system-ui; background: linear-gradient(180deg,#0f172a 0%, #081028 60%); color: #0b1220;}
+
+    .container{max-width:1200px;margin:28px auto;padding:20px;}
+    header{display:flex;align-items:center;justify-content:space-between;color:white;margin-bottom:20px}
+    h1{font-size:1.6rem}
+    .logout-btn{background:#ef4444;color:white;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;border:none}
+
+    .layout{display:grid;grid-template-columns:280px 1fr;gap:18px;}
+    @media(max-width:880px){.layout{grid-template-columns:1fr}}
+
+    .sidebar{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:var(--radius);backdrop-filter:blur(6px);}
+    .feature-btn{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background:transparent;color:rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.03);cursor:pointer;margin-bottom:8px;width:100%}
+    .feature-btn.active{background:linear-gradient(90deg, rgba(124,58,237,0.16), rgba(6,182,212,0.08));border:1px solid rgba(124,58,237,0.2)}
+    .small{font-size:0.85rem;color:var(--muted)}
+    .badge{background:#ef4444;color:white;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+
+    .main{padding:18px;border-radius:var(--radius);background:linear-gradient(180deg,#ffffff 0%, #fbfdff 100%);min-height:560px}
+    .panel-head h2{color:#071130;margin-bottom:8px}
+
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+    @media(max-width:880px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,#fff 0%, #fafcff 100%);padding:16px;border-radius:10px;border:1px solid rgba(10,10,20,0.02)}
+
+    input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6;background:#fbfdff;margin-bottom:10px}
+    .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+
+    .btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white}
+    .contact-btn {
+      background: #4caf50;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-left: 8px;
+    }
+
+    .contact-btn:hover {
+      background: #45a049;
+    }
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+
+    .student-list{margin-top:12px}
+    .student-item{display:flex;justify-content:space-between;padding:8px;background:#f8faff;border-radius:6px;margin-bottom:4px;align-items:center}
+
+    .message-list, .notification-list, .homework-list{max-height:400px;overflow-y:auto;margin-top:12px}
+    .message-item, .notification-item, .homework-item{padding:12px;background:#f8faff;border-radius:8px;margin-bottom:8px;border-left:4px solid var(--accent1)}
+    .notification-item.important{border-left-color:#ef4444;background:#ffebee}
+
+    .timetable-grid{overflow-x:auto;margin-top:16px}
+    .timetable-grid table{width:100%;border-collapse:collapse}
+    .timetable-grid th,.timetable-grid td{padding:12px;border:1px solid #e6eef6;text-align:left}
+    .timetable-grid th{background:#f0f4ff;font-weight:600}
+
+    .marks-input{width:80px;padding:6px;margin:0}
+    
+    .success{color:#2e7d32;background:#e8f5e9;padding:12px;border-radius:8px;margin:10px 0}
+    .error{color:#d32f2f;background:#ffebee;padding:12px;border-radius:8px;margin:10px 0}
+    .warning{color:#f57c00;background:#fff3e0;padding:12px;border-radius:8px;margin:10px 0}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>🌈 Teacher Dashboard</h1>
+        <div class="small" id="teacherInfo">Loading...</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="small" style="color:rgba(255,255,255,0.7);margin-bottom:10px">FEATURES</div>
+        <button class="feature-btn active" onclick="loadSection('attendance')">📅 Smart Attendance</button>
+        <button class="feature-btn" onclick="loadSection('marks')">📊 Upload Marks</button>
+        <button class="feature-btn" onclick="loadSection('view-marks')">📈 View Marks</button>
+        <button class="feature-btn" onclick="loadSection('homework')">📝 Assign Homework</button>
+        <button class="feature-btn" onclick="loadSection('homework-list')">📚 My Homework</button>
+        <button class="feature-btn" onclick="loadSection('messages')">💬 Parent Messages</button>
+        <button class="feature-btn" onclick="loadSection('notifications')">🔔 Notifications <span id="notifBadge"></span></button>
+        <button class="feature-btn" onclick="loadSection('timetable')">📚 Smart Timetable</button>
+      </aside>
+
+      <main class="main">
+        <div id="mainContent"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api';
+    let token = localStorage.getItem('token');
+    let teacherName = localStorage.getItem('teacherName') || 'Teacher';
+    let teacherId = localStorage.getItem('teacherId');
+    let currentSection = 'attendance';
+
+    if (!token) {
+      alert('Please login first');
+      window.location.href = 'project.html';
+    }
+
+    document.getElementById('teacherInfo').textContent = `Welcome, ${teacherName}`;
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'project.html';
+    }
+
+    async function apiCall(endpoint, method = 'GET', data = null) {
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        };
+        
+        if (data && method !== 'GET') options.body = JSON.stringify(data);
+        
+        const response = await fetch(`${API_URL}${endpoint}`, options);
+        const result = await response.json();
+        
+        if (!response.ok) throw new Error(result.error || 'Request failed');
+        return result;
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+    }
+// Add these three functions after the apiCall function and before checkNotifications
+function makeCall(phoneNumber) {
+  const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    window.location.href = `tel:${cleanNumber}`;
+  } else {
+    alert(`Call ${phoneNumber} from your phone`);
+    copyNumber(phoneNumber);
+  }
+}
+
+function openWhatsApp(phoneNumber) {
+  const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+  window.open(`https://wa.me/${cleanNumber}`, '_blank');
+}
+
+function copyNumber(phoneNumber) {
+  navigator.clipboard.writeText(phoneNumber)
+    .then(() => alert(`Phone number ${phoneNumber} copied to clipboard!`))
+    .catch(() => prompt('Copy this number:', phoneNumber));
+}
+    // Load notifications on page load
+    async function checkNotifications() {
+      try {
+        const notifications = await apiCall('/teacher/notifications', 'GET');
+        const unread = notifications.filter(n => {
+          const sentDate = new Date(n.sentAt);
+          const dayAgo = new Date(Date.now() - 24*60*60*1000);
+          return sentDate > dayAgo;
+        }).length;
+        
+        if (unread > 0) {
+          document.getElementById('notifBadge').innerHTML = `<span class="badge">${unread}</span>`;
+        }
+      } catch (error) {
+        console.error('Failed to check notifications');
+      }
+    }
+
+    function loadSection(section) {
+      currentSection = section;
+      document.querySelectorAll('.feature-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      
+      const content = document.getElementById('mainContent');
+      
+      if (section === 'attendance') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📅 Smart Attendance</h2>
+            <p class="small">Mark attendance by date for multiple classes</p>
+          </div>
+
+          <div id="statusMsg"></div>
+
+          <div class="card">
+            <label>Select Date:</label>
+            <input type="date" id="attendanceDate" value="${new Date().toISOString().split('T')[0]}">
+            
+            <label>Select Class:</label>
+            <select id="attendanceClass" onchange="loadClassStudents()">
+              <option value="">-- Select Class --</option>
+            </select>
+
+            <div id="studentsList"></div>
+
+            <button class="btn primary" onclick="markAttendance()" id="markBtn" disabled>Mark Attendance</button>
+          </div>
+        `;
+        
+        loadClasses();
+      }
+      
+      else if (section === 'marks') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📊 Upload Student Marks</h2>
+            <p class="small">Enter marks for exams/tests by subject</p>
+          </div>
+
+          <div id="statusMsg"></div>
+
+          <div class="card">
+            <div class="grid">
+              <div>
+                <label>Select Class:</label>
+                <select id="marksClass" onchange="loadStudentsForMarks()">
+                  <option value="">-- Select Class --</option>
+                </select>
+              </div>
+              <div>
+                <label>Subject:</label>
+                <input type="text" id="marksSubject" placeholder="e.g., Mathematics">
+              </div>
+              <div>
+                <label>Exam Type:</label>
+                <select id="marksExamType">
+                  <option value="Unit Test">Unit Test</option>
+                  <option value="Mid Term">Mid Term</option>
+                  <option value="Final Exam">Final Exam</option>
+                  <option value="Quiz">Quiz</option>
+                  <option value="Assignment">Assignment</option>
+                </select>
+              </div>
+              <div>
+                <label>Max Marks:</label>
+                <input type="number" id="marksMaxMarks" placeholder="100" value="100">
+              </div>
+            </div>
+
+            <div id="marksStudentsList"></div>
+
+            <button class="btn primary" onclick="uploadMarks()" id="uploadMarksBtn" disabled>Upload Marks</button>
+          </div>
+        `;
+        
+        loadClassesForMarks();
+      }
+
+      else if (section === 'view-marks') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📈 View Uploaded Marks</h2>
+            <p class="small">View all marks records</p>
+          </div>
+
+          <div class="card">
+            <div class="grid">
+              <div>
+                <label>Filter by Class:</label>
+                <select id="viewMarksClass" onchange="loadMarksRecords()">
+                  <option value="">All Classes</option>
+                </select>
+              </div>
+              <div>
+                <label>Filter by Subject:</label>
+                <input type="text" id="viewMarksSubject" placeholder="Enter subject">
+              </div>
+            </div>
+            <button class="btn" onclick="loadMarksRecords()">Search</button>
+          </div>
+
+          <div id="marksRecordsList" class="message-list"></div>
+        `;
+        
+        loadClassesForViewMarks();
+        loadMarksRecords();
+      }
+      
+      else if (section === 'homework') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📝 Assign Homework</h2>
+            <p class="small">Create homework with optional PDF or link attachment</p>
+          </div>
+
+          <div id="statusMsg"></div>
+
+          <div class="card">
+            <div class="grid">
+              <div>
+                <label>Title:</label>
+                <input type="text" id="hwTitle" placeholder="Homework title">
+              </div>
+              <div>
+                <label>Subject:</label>
+                <input type="text" id="hwSubject" placeholder="e.g., Mathematics">
+              </div>
+              <div>
+                <label>Class:</label>
+                <select id="hwClass">
+                  <option value="">-- Select Class --</option>
+                </select>
+              </div>
+              <div>
+                <label>Due Date:</label>
+                <input type="date" id="hwDueDate">
+              </div>
+            </div>
+            
+            <label>Description:</label>
+            <textarea id="hwDescription" rows="4" placeholder="Homework details..."></textarea>
+            
+            <label>Attachment Type:</label>
+            <select id="hwAttachmentType" onchange="toggleAttachment()">
+              <option value="none">None</option>
+              <option value="link">Link/URL</option>
+              <option value="pdf">PDF Link</option>
+            </select>
+            
+            <div id="attachmentInput" class="hidden">
+              <label>Attachment URL:</label>
+              <input type="url" id="hwAttachmentUrl" placeholder="https://example.com/document.pdf">
+              <small class="small">Enter the full URL to your PDF or resource</small>
+            </div>
+            
+            <button class="btn primary" onclick="assignHomework()" style="margin-top:12px">Assign Homework</button>
+          </div>
+        `;
+        
+        loadClassesForHomework();
+      }
+      
+      else if (section === 'homework-list') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📚 My Assigned Homework</h2>
+            <p class="small">View all homework you've assigned</p>
+          </div>
+          
+          <button class="btn" onclick="loadMyHomework()">Refresh</button>
+          <div id="homeworkList" class="homework-list"></div>
+        `;
+        
+        loadMyHomework();
+      }
+      
+      else if (section === 'messages') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>💬 Parent-Teacher Communication</h2>
+            <p class="small">Send messages to parents</p>
+          </div>
+
+          <div id="statusMsg"></div>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Send Message</h3>
+              <label>To (Parent Phone):</label>
+              <input type="text" id="msgTo" placeholder="Parent phone number">
+              
+              <label>Subject:</label>
+              <input type="text" id="msgSubject" placeholder="Message subject">
+              
+              <label>Message:</label>
+              <textarea id="msgBody" rows="4" placeholder="Type your message..."></textarea>
+              
+              <button class="btn primary" onclick="sendMessage()">Send Message</button>
+            </div>
+
+            <div class="card">
+              <h3>Sent Messages</h3>
+              <button class="btn" onclick="loadMessages()">Refresh</button>
+              <div id="messagesList" class="message-list"></div>
+            </div>
+          </div>
+        `;
+        
+        async function loadMessages() {
+  try {
+    const messages = await apiCall('/messages', 'GET');
+    const list = document.getElementById('messagesList');
+    
+    if (!list) return;
+    
+    if (messages.length === 0) {
+      list.innerHTML = '<p>No messages sent yet</p>';
+      return;
+    }
+
+    list.innerHTML = messages.map(m => `
+      <div class="message-item">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong>${m.subject}</strong>
+          <span class="small">${new Date(m.sentAt).toLocaleString()}</span>
+        </div>
+        <div>To: ${m.to}</div>
+        <p style="margin-top:8px">${m.message}</p>
+        
+        <div class="contact-actions">
+          <button class="call-btn" onclick="makeCall('${m.to}')">📞 Call</button>
+          <button class="whatsapp-btn" onclick="openWhatsApp('${m.to}')">💬 WhatsApp</button>
+          <button class="contact-btn" onclick="copyNumber('${m.to}')">📋 Copy Number</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    const list = document.getElementById('messagesList');
+    if (list) {
+      list.innerHTML = '<p class="error">Failed to load messages</p>';
+    }
+    showMsg('Failed to load messages', 'error');
+  }
+}
+      }
+      
+      else if (section === 'notifications') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>🔔 Notifications from Admin</h2>
+            <p class="small">Important messages and announcements</p>
+          </div>
+          
+          <button class="btn" onclick="loadNotifications()">Refresh</button>
+          <div id="notificationsList" class="notification-list"></div>
+        `;
+        
+        loadNotifications();
+      }
+      
+      else if (section === 'timetable') {
+        content.innerHTML = `
+          <div class="panel-head">
+            <h2>📚 Smart Timetable Generator</h2>
+            <p class="small">AI-powered timetable with no teacher conflicts</p>
+          </div>
+
+          <div id="statusMsg"></div>
+
+          <div class="card">
+            <h3>Generate Timetable</h3>
+            
+            <label>Class:</label>
+            <select id="ttClass">
+              <option value="">-- Select Class --</option>
+            </select>
+
+            <label>Subjects (comma-separated with teacher names):</label>
+            <textarea id="ttSubjects" rows="4" placeholder="Math-Mr. Smith, Science-Ms. Johnson, English-Mr. Davis"></textarea>
+            <small class="small">Format: Subject-TeacherName, Subject-TeacherName</small>
+
+            <div class="grid" style="margin-top:10px">
+              <div>
+                <label>School Start Time:</label>
+                <input type="time" id="ttStart" value="08:00">
+              </div>
+              <div>
+                <label>School End Time:</label>
+                <input type="time" id="ttEnd" value="14:00">
+              </div>
+              <div>
+                <label>Period Duration (mins):</label>
+                <input type="number" id="ttDuration" value="45">
+              </div>
+              <div>
+                <label>Break Time:</label>
+                <input type="text" id="ttBreak" value="10:30 AM">
+              </div>
+            </div>
+
+            <button class="btn primary" onclick="generateTimetable()" id="genTTBtn">Generate Timetable</button>
+          </div>
+
+          <div id="timetableView"></div>
+        `;
+        
+        loadClassesForTT();
+      }
+    }
+
+    // ==================== ATTENDANCE ====================
+    async function loadClasses() {
+      try {
+        const classes = await apiCall('/classes', 'GET');
+        const select = document.getElementById('attendanceClass');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Select Class --</option>';
+        
+        if (classes.length === 0) {
+          select.innerHTML += '<option value="" disabled>No classes created yet</option>';
+          showMsg('No classes found. Please ask admin to create classes.', 'warning');
+          return;
+        }
+        
+        classes.forEach(c => {
+          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+        });
+      } catch (error) {
+        console.error('Failed to load classes:', error);
+        showMsg('Failed to load classes: ' + error.message, 'error');
+      }
+    }
+
+    async function loadClassStudents() {
+      const className = document.getElementById('attendanceClass').value;
+      if (!className) return;
+
+      try {
+        const students = await apiCall(`/students/class/${className}`, 'GET');
+        const list = document.getElementById('studentsList');
+        
+        if (students.length === 0) {
+          list.innerHTML = '<p class="warning">No students in this class</p>';
+          return;
+        }
+
+        list.innerHTML = '<div class="student-list"><h4>Mark Attendance:</h4>';
+        students.forEach(s => {
+          list.innerHTML += `
+            <div class="student-item">
+              <span>${s.name} (${s.rollNo})</span>
+              <select id="status-${s.studentId}">
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Late">Late</option>
+                <option value="Excused">Excused</option>
+              </select>
+            </div>
+          `;
+        });
+        list.innerHTML += '</div>';
+
+        document.getElementById('markBtn').disabled = false;
+      } catch (error) {
+        showMsg('Failed to load students', 'error');
+      }
+    }
+
+    async function markAttendance() {
+      const date = document.getElementById('attendanceDate').value;
+      const className = document.getElementById('attendanceClass').value;
+      
+      if (!date || !className) {
+        showMsg('Please select date and class', 'error');
+        return;
+      }
+
+      const students = await apiCall(`/students/class/${className}`, 'GET');
+      const attendanceRecords = students.map(s => ({
+        studentId: s.studentId,
+        status: document.getElementById(`status-${s.studentId}`).value
+      }));
+
+      try {
+        document.getElementById('markBtn').disabled = true;
+        await apiCall('/attendance', 'POST', { date, class: className, attendanceRecords });
+        showMsg('Attendance marked successfully!', 'success');
+        document.getElementById('markBtn').disabled = false;
+      } catch (error) {
+        showMsg('Failed to mark attendance', 'error');
+        document.getElementById('markBtn').disabled = false;
+      }
+    }
+
+    // ==================== MARKS ====================
+    async function loadClassesForMarks() {
+      try {
+        const classes = await apiCall('/classes', 'GET');
+        const select = document.getElementById('marksClass');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Select Class --</option>';
+        
+        if (classes.length === 0) {
+          select.innerHTML += '<option value="" disabled>No classes created yet</option>';
+          showMsg('No classes found. Please ask admin to create classes.', 'warning');
+          return;
+        }
+        
+        classes.forEach(c => {
+          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+        });
+      } catch (error) {
+        console.error('Failed to load classes:', error);
+        showMsg('Failed to load classes: ' + error.message, 'error');
+      }
+    }
+
+    async function loadStudentsForMarks() {
+      const className = document.getElementById('marksClass').value;
+      if (!className) return;
+
+      try {
+        const students = await apiCall(`/students/class/${className}`, 'GET');
+        const list = document.getElementById('marksStudentsList');
+        
+        if (students.length === 0) {
+          list.innerHTML = '<p class="warning">No students in this class</p>';
+          return;
+        }
+
+        list.innerHTML = '<div class="student-list"><h4>Enter Marks:</h4>';
+        students.forEach(s => {
+          list.innerHTML += `
+            <div class="student-item">
+              <span>${s.name} (Roll: ${s.rollNo})</span>
+              <input type="number" class="marks-input" id="marks-${s.studentId}" 
+                     min="0" max="100" placeholder="Marks">
+            </div>
+          `;
+        });
+        list.innerHTML += '</div>';
+
+        document.getElementById('uploadMarksBtn').disabled = false;
+      } catch (error) {
+        showMsg('Failed to load students', 'error');
+      }
+    }
+
+    async function uploadMarks() {
+      const className = document.getElementById('marksClass').value;
+      const subject = document.getElementById('marksSubject').value.trim();
+      const examType = document.getElementById('marksExamType').value;
+      const maxMarks = document.getElementById('marksMaxMarks').value;
+
+      if (!className || !subject || !maxMarks) {
+        showMsg('Please fill all fields and select a class', 'error');
+        return;
+      }
+
+      try {
+        const students = await apiCall(`/students/class/${className}`, 'GET');
+        const marksData = [];
+
+        for (const s of students) {
+          const marksInput = document.getElementById(`marks-${s.studentId}`);
+          const marks = marksInput.value;
+          
+          if (marks !== '') {
+            marksData.push({
+              studentId: s.studentId,
+              studentName: s.name,
+              marks: parseFloat(marks)
+            });
+          }
+        }
+
+        if (marksData.length === 0) {
+          showMsg('Please enter marks for at least one student', 'error');
+          return;
+        }
+
+        document.getElementById('uploadMarksBtn').disabled = true;
+
+        await apiCall('/marks', 'POST', {
+          class: className,
+          subject,
+          examType,
+          maxMarks: parseFloat(maxMarks),
+          marksData
+        });
+
+        showMsg(`✅ Marks uploaded successfully for ${marksData.length} students!`, 'success');
+        
+        // Clear form
+        document.getElementById('marksSubject').value = '';
+        document.getElementById('marksMaxMarks').value = '100';
+        marksData.forEach(m => {
+          const input = document.getElementById(`marks-${m.studentId}`);
+          if (input) input.value = '';
+        });
+        
+        document.getElementById('uploadMarksBtn').disabled = false;
+      } catch (error) {
+        showMsg('Failed to upload marks: ' + error.message, 'error');
+        document.getElementById('uploadMarksBtn').disabled = false;
+      }
+    }
+
+    async function loadClassesForViewMarks() {
+      try {
+        const classes = await apiCall('/classes', 'GET');
+        const select = document.getElementById('viewMarksClass');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">All Classes</option>';
+        classes.forEach(c => {
+          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+        });
+      } catch (error) {
+        console.error('Failed to load classes:', error);
+      }
+    }
+
+    async function loadMarksRecords() {
+      const list = document.getElementById('marksRecordsList');
+      list.innerHTML = '<p>Loading...</p>';
+      
+      try {
+        const className = document.getElementById('viewMarksClass')?.value || '';
+        const subject = document.getElementById('viewMarksSubject')?.value || '';
+        
+        let endpoint = '/teacher/marks';
+        const params = [];
+        if (className) params.push(`class=${encodeURIComponent(className)}`);
+        if (subject) params.push(`subject=${encodeURIComponent(subject)}`);
+        if (params.length > 0) endpoint += '?' + params.join('&');
+
+        const marks = await apiCall(endpoint, 'GET');
+        
+        if (marks.length === 0) {
+          list.innerHTML = '<p>No marks records found</p>';
+          return;
+        }
+
+        list.innerHTML = marks.map(m => `
+          <div class="message-item">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <strong>${m.subject} - ${m.examType}</strong>
+              <span class="small">${new Date(m.uploadedAt).toLocaleDateString()}</span>
+            </div>
+            <div><strong>Class:</strong> ${m.class} | <strong>Max Marks:</strong> ${m.maxMarks}</div>
+            <div style="margin-top:8px">
+              <strong>Students: ${m.marksData.length}</strong>
+              <div style="margin-top:8px;max-height:200px;overflow-y:auto">
+                ${m.marksData.map(s => `
+                  <div style="padding:4px;background:#f0f4ff;margin:2px 0;border-radius:4px">
+                    ${s.studentName}: <strong>${s.marks}/${m.maxMarks}</strong>
+                    ${s.marks >= m.maxMarks * 0.9 ? '🌟' : s.marks >= m.maxMarks * 0.75 ? '✅' : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = '<p class="error">Failed to load marks records</p>';
+      }
+    }
+
+    // ==================== HOMEWORK ====================
+    async function loadClassesForHomework() {
+      try {
+        const classes = await apiCall('/classes', 'GET');
+        const select = document.getElementById('hwClass');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Select Class --</option>';
+        
+        if (classes.length === 0) {
+          select.innerHTML += '<option value="" disabled>No classes created yet</option>';
+          showMsg('No classes found. Please ask admin to create classes.', 'warning');
+          return;
+        }
+        
+        classes.forEach(c => {
+          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+        });
+      } catch (error) {
+        console.error('Failed to load classes:', error);
+        showMsg('Failed to load classes: ' + error.message, 'error');
+      }
+    }
+
+    function toggleAttachment() {
+      const type = document.getElementById('hwAttachmentType').value;
+      const input = document.getElementById('attachmentInput');
+      
+      if (type === 'none') {
+        input.classList.add('hidden');
+      } else {
+        input.classList.remove('hidden');
+      }
+    }
+
+    async function assignHomework() {
+      const title = document.getElementById('hwTitle').value.trim();
+      const subject = document.getElementById('hwSubject').value.trim();
+      const className = document.getElementById('hwClass').value;
+      const dueDate = document.getElementById('hwDueDate').value;
+      const description = document.getElementById('hwDescription').value.trim();
+      const attachmentType = document.getElementById('hwAttachmentType').value;
+      const attachmentUrl = document.getElementById('hwAttachmentUrl').value.trim();
+
+      if (!title || !subject || !className || !dueDate || !description) {
+        showMsg('Please fill all required fields', 'error');
+        return;
+      }
+
+      try {
+        await apiCall('/homework', 'POST', {
+          title,
+          subject,
+          class: className,
+          dueDate,
+          description,
+          attachmentType,
+          attachmentUrl
+        });
+        
+        showMsg('✅ Homework assigned successfully!', 'success');
+        
+        // Clear form
+        document.getElementById('hwTitle').value = '';
+        document.getElementById('hwSubject').value = '';
+        document.getElementById('hwClass').value = '';
+        document.getElementById('hwDueDate').value = '';
+        document.getElementById('hwDescription').value = '';
+        document.getElementById('hwAttachmentType').value = 'none';
+        document.getElementById('hwAttachmentUrl').value = '';
+        document.getElementById('attachmentInput').classList.add('hidden');
+      } catch (error) {
+        showMsg('Failed to assign homework', 'error');
+      }
+    }
+
+    async function loadMyHomework() {
+      const list = document.getElementById('homeworkList');
+      list.innerHTML = '<p>Loading...</p>';
+      
+      try {
+        const homework = await apiCall('/teacher/homework', 'GET');
+        
+        if (homework.length === 0) {
+          list.innerHTML = '<p>No homework assigned yet</p>';
+          return;
+        }
+
+        list.innerHTML = homework.map(hw => `
+          <div class="homework-item">
+            <strong>${hw.title}</strong><br>
+            Subject: ${hw.subject} | Class: ${hw.class}<br>
+            Due: ${new Date(hw.dueDate).toLocaleDateString()}<br>
+            ${hw.attachmentType !== 'none' ? `<br>📎 Attachment: <a href="${hw.attachmentUrl}" target="_blank">${hw.attachmentType.toUpperCase()}</a><br>` : ''}
+            <p style="margin-top:8px">${hw.description}</p>
+            <small class="small">Assigned: ${new Date(hw.createdAt).toLocaleString()}</small>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = '<p class="error">Failed to load homework</p>';
+      }
+    }
+
+    // ==================== NOTIFICATIONS ====================
+    async function loadNotifications() {
+      const list = document.getElementById('notificationsList');
+      list.innerHTML = '<p>Loading...</p>';
+      
+      try {
+        const notifications = await apiCall('/teacher/notifications', 'GET');
+        
+        if (notifications.length === 0) {
+          list.innerHTML = '<p>No notifications</p>';
+          return;
+        }
+
+        list.innerHTML = notifications.map(n => `
+          <div class="notification-item ${n.priority === 'important' || n.priority === 'emergency' ? 'important' : ''}">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <strong>${n.priority.toUpperCase()}</strong>
+              <span class="small">${new Date(n.sentAt).toLocaleString()}</span>
+            </div>
+            <p>${n.message}</p>
+            <small class="small">From: ${n.sentBy}</small>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = '<p class="error">Failed to load notifications</p>';
+      }
+    }
+
+    // ==================== MESSAGES ====================
+    async function sendMessage() {
+      const to = document.getElementById('msgTo').value;
+      const subject = document.getElementById('msgSubject').value;
+      const message = document.getElementById('msgBody').value;
+
+      if (!to || !subject || !message) {
+        showMsg('Please fill all fields', 'error');
+        return;
+      }
+
+      try {
+        await apiCall('/messages', 'POST', { to, subject, message });
+        showMsg('Message sent successfully!', 'success');
+        document.getElementById('msgTo').value = '';
+        document.getElementById('msgSubject').value = '';
+        document.getElementById('msgBody').value = '';
+        loadMessages();
+      } catch (error) {
+        showMsg('Failed to send message', 'error');
+      }
+    }
+
+    async function loadMessages() {
+      try {
+        const messages = await apiCall('/messages', 'GET');
+        const list = document.getElementById('messagesList');
+        
+        if (!list) return;
+        
+        if (messages.length === 0) {
+          list.innerHTML = '<p>No messages sent yet</p>';
+          return;
+        }
+
+        list.innerHTML = messages.map(m => `
+          <div class="message-item">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>${m.subject}</strong>
+              <button class="contact-btn" onclick="openContact('${m.to}')">
+                📞 Contact
+              </button>
+            </div>
+            To: ${m.to}<br>
+            <small>${new Date(m.sentAt).toLocaleString()}</small><br>
+            <p style="margin-top:8px">${m.message}</p>
+          </div>
+        `).join('');
+      } catch (error) {
+        const list = document.getElementById('messagesList');
+        if (list) {
+          list.innerHTML = '<p class="error">Failed to load messages</p>';
+        }
+        showMsg('Failed to load messages', 'error');
+      }
+    }
+
+    // ==================== TIMETABLE ====================
+    async function loadClassesForTT() {
+      try {
+        const classes = await apiCall('/classes', 'GET');
+        const select = document.getElementById('ttClass');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Select Class --</option>';
+        
+        if (classes.length === 0) {
+          select.innerHTML += '<option value="" disabled>No classes created yet</option>';
+          return;
+        }
+        
+        classes.forEach(c => {
+          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+        });
+      } catch (error) {
+        showMsg('Failed to load classes', 'error');
+      }
+    }
+
+    async function generateTimetable() {
+      const className = document.getElementById('ttClass').value;
+      const subjectsText = document.getElementById('ttSubjects').value;
+      const startTime = document.getElementById('ttStart').value;
+      const endTime = document.getElementById('ttEnd').value;
+      const periodDuration = document.getElementById('ttDuration').value;
+      const breakTime = document.getElementById('ttBreak').value;
+
+      if (!className || !subjectsText) {
+        showMsg('Please fill class and subjects', 'error');
+        return;
+      }
+
+      const subjects = subjectsText.split(',').map(s => {
+        const [name, teacher] = s.trim().split('-');
+        return { 
+          name: name.trim(), 
+          teacher: teacher?.trim() || 'Unknown',
+          teacherId: `T${Math.random().toString(36).substr(2, 9)}`
+        };
+      });
+
+      try {
+        document.getElementById('genTTBtn').disabled = true;
+        showMsg('Generating timetable with AI... Please wait', 'success');
+
+        const result = await apiCall('/timetable/generate', 'POST', {
+          class: className,
+          subjects,
+          timing: { startTime, endTime, periodDuration, breakTime }
+        });
+
+        showMsg('Timetable generated successfully!', 'success');
+        displayTimetable(result.timetable);
+        document.getElementById('genTTBtn').disabled = false;
+      } catch (error) {
+        showMsg('Failed to generate timetable: ' + error.message, 'error');
+        document.getElementById('genTTBtn').disabled = false;
+      }
+    }
+
+    function displayTimetable(timetable) {
+      const view = document.getElementById('timetableView');
+      
+      view.innerHTML = `
+        <div class="card" style="margin-top:20px">
+          <h3>Generated Timetable - ${timetable.class}</h3>
+          <div class="timetable-grid">
+            <table>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Periods</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${timetable.schedule.map(day => `
+                  <tr>
+                    <td><strong>${day.day}</strong></td>
+                    <td>
+                      ${day.periods.map(p => `
+                        <div style="margin-bottom:8px;padding:8px;background:#f0f4ff;border-radius:4px">
+                          <strong>${p.subject}</strong> - ${p.teacher}<br>
+                          <small>${p.startTime} - ${p.endTime}</small>
+                        </div>
+                      `).join('')}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ==================== CONTACT HELPER ====================
+
+    // ==================== HELPERS ====================
+    function showMsg(msg, type) {
+      const statusMsg = document.getElementById('statusMsg');
+      if (!statusMsg) return;
+      statusMsg.className = type;
+      statusMsg.textContent = msg;
+      statusMsg.classList.remove('hidden');
+      setTimeout(() => statusMsg.classList.add('hidden'), 5000);
+    }
+
+    // Initialize
+    checkNotifications();
+    loadSection('attendance');
+  </script>
+</body>
+</html>

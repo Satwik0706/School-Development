@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Student Portal – Complete</title>
+
+<style>
+:root{
+  --accent1:#7c3aed; --accent2:#06b6d4; --accent3:#22c55e; --accent4:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Inter,system-ui;
+  background:linear-gradient(180deg,#0f172a 0%, #081028 60%);
+  color:white;
+}
+
+.container{max-width:1200px;margin:28px auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:1.6rem}
+
+.btn{padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-weight:600}
+.btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white}
+
+.layout{display:grid;grid-template-columns:280px 1fr;gap:18px}
+@media(max-width:880px){.layout{grid-template-columns:1fr}}
+
+.sidebar{
+  background:rgba(255,255,255,0.03);padding:14px;
+  border-radius:14px;backdrop-filter:blur(6px)
+}
+
+.feature-btn{
+  padding:10px;border-radius:10px;background:transparent;
+  color:white;border:1px solid rgba(255,255,255,0.05);
+  cursor:pointer;margin-bottom:8px;width:100%;text-align:left
+}
+.feature-btn.active{
+  background:linear-gradient(90deg,rgba(124,58,237,.2),rgba(6,182,212,.1));
+}
+
+.main{
+  background:white;padding:20px;border-radius:14px;min-height:560px;color:#0b1220
+}
+
+.stat-card{
+  padding:20px;background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;border-radius:12px;margin-bottom:16px;
+  box-shadow:0 8px 20px rgba(102,126,234,0.3)
+}
+.stat-card h3{margin:0 0 8px 0;font-size:2.5rem}
+
+.data-item{
+  padding:14px;background:#f8faff;border-radius:8px;
+  margin-bottom:10px;border-left:4px solid var(--accent1)
+}
+
+.notification{
+  padding:12px;background:#fff3cd;border-left:4px solid #ffc107;
+  border-radius:8px;margin:8px 0
+}
+.notification.important{background:#ffe0e0;border-color:#ef4444}
+
+.bus-card{
+  padding:16px;background:#e8f5e9;border-left:4px solid #4caf50;
+  border-radius:8px;margin:10px 0
+}
+
+.marks-card{
+  padding:16px;background:#f0f4ff;border-left:4px solid #7c3aed;
+  border-radius:8px;margin:10px 0
+}
+
+.marks-table{
+  width:100%;border-collapse:collapse;margin-top:12px
+}
+.marks-table th,.marks-table td{
+  padding:10px;border:1px solid #e0e7ff;text-align:left
+}
+.marks-table th{
+  background:#eef2ff;font-weight:600;color:#5b21b6
+}
+.marks-table tr:hover{background:#faf5ff}
+
+.logout-btn{
+  background:#ef4444;color:white;padding:8px 16px;
+  border-radius:8px;border:none;cursor:pointer;font-weight:600
+}
+
+.badge{
+  background:#ef4444;color:white;padding:4px 8px;
+  border-radius:12px;font-size:11px;font-weight:700;margin-left:8px
+}
+
+.small{font-size:0.85rem;color:#6b7280}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}
+@media(max-width:768px){.grid{grid-template-columns:1fr}}
+
+.timetable-grid table{width:100%;border-collapse:collapse;margin-top:16px}
+.timetable-grid th,.timetable-grid td{padding:12px;border:1px solid #e6eef6}
+.timetable-grid th{background:#f0f4ff;font-weight:600}
+
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>🎓 Student Dashboard</h1>
+    <div class="small" id="studentInfo">Loading...</div>
+  </div>
+  <button class="logout-btn" onclick="logout()">Logout</button>
+</header>
+
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="small" style="color:rgba(255,255,255,0.7);margin-bottom:10px">MY PORTAL</div>
+  <button class="feature-btn active" onclick="loadSection('dashboard')">📊 Dashboard</button>
+  <button class="feature-btn" onclick="loadSection('attendance')">📅 My Attendance</button>
+  <button class="feature-btn" onclick="loadSection('marks')">📈 My Marks</button>
+  <button class="feature-btn" onclick="loadSection('homework')">📝 My Homework</button>
+  <button class="feature-btn" onclick="loadSection('notifications')">🔔 Notifications <span id="notifBadge"></span></button>
+  <button class="feature-btn" onclick="loadSection('bus')">🚌 Bus Tracking</button>
+  <button class="feature-btn" onclick="loadSection('timetable')">📚 My Timetable</button>
+</aside>
+
+<main class="main" id="mainContent">
+  <h2>Loading...</h2>
+</main>
+
+</div>
+</div>
+
+<script>
+const API_URL = 'http://localhost:5000/api';
+let token = localStorage.getItem('token');
+let studentId = localStorage.getItem('studentId');
+let dashboardData = null;
+
+if (!token) {
+  alert('Please login first!');
+  window.location.href = 'project.html';
+}
+
+function logout() {
+  if (confirm('Logout?')) {
+    localStorage.clear();
+    window.location.href = 'project.html';
+  }
+}
+
+async function apiCall(endpoint, method = 'GET', data = null) {
+  try {
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    
+    if (data && method !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+    
+    const response = await fetch(`${API_URL}${endpoint}`, options);
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Request failed');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
+
+async function loadDashboardData() {
+  try {
+    dashboardData = await apiCall('/student/dashboard', 'GET');
+    console.log('Dashboard Data:', dashboardData);
+    
+    document.getElementById('studentInfo').textContent = 
+      `${dashboardData.student.name} | Class: ${dashboardData.student.class} | Roll: ${dashboardData.student.rollNo}`;
+    
+    // Show notification badge
+    const newNotifs = dashboardData.notifications.filter(n => {
+      const sentDate = new Date(n.sentAt);
+      const dayAgo = new Date(Date.now() - 24*60*60*1000);
+      return sentDate > dayAgo;
+    }).length;
+    
+    if (newNotifs > 0) {
+      document.getElementById('notifBadge').innerHTML = `<span class="badge">${newNotifs}</span>`;
+    }
+    
+    loadSection('dashboard');
+  } catch (error) {
+    document.getElementById('mainContent').innerHTML = 
+      `<div style="color:red">Failed to load dashboard: ${error.message}</div>`;
+  }
+}
+
+function loadSection(section) {
+  // Update active button
+  document.querySelectorAll('.feature-btn').forEach(b => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+  
+  const content = document.getElementById('mainContent');
+  
+  if (section === 'dashboard') {
+    const marksCount = dashboardData.student.marks ? dashboardData.student.marks.length : 0;
+    
+    content.innerHTML = `
+      <h2>My Dashboard</h2>
+      <p class="small">All your school information in one place</p>
+      
+      <div class="stat-card">
+        <div class="small">My Attendance</div>
+        <h3>${dashboardData.attendance.percentage}%</h3>
+        <p>Present: ${dashboardData.attendance.presentDays} / ${dashboardData.attendance.totalDays} days</p>
+      </div>
+      
+      <div class="grid">
+        <div class="data-item">
+          <strong>${dashboardData.homework.length}</strong><br>
+          <span class="small">Homework Assigned</span>
+        </div>
+        <div class="data-item">
+          <strong>${marksCount}</strong><br>
+          <span class="small">Marks Received</span>
+        </div>
+        <div class="data-item">
+          <strong>${dashboardData.notifications.length}</strong><br>
+          <span class="small">Notifications</span>
+        </div>
+      </div>
+      
+      <h3>Recent Notifications</h3>
+      ${dashboardData.notifications.slice(0, 5).map(n => `
+        <div class="notification ${n.priority === 'important' || n.priority === 'emergency' ? 'important' : ''}">
+          <strong>${n.priority.toUpperCase()}</strong> – ${n.message}<br>
+          <span class="small">${new Date(n.sentAt).toLocaleString()}</span>
+        </div>
+      `).join('') || '<p>No notifications</p>'}
+      
+      <h3>Pending Homework</h3>
+      ${dashboardData.homework.filter(hw => new Date(hw.dueDate) >= new Date()).slice(0, 3).map(hw => `
+        <div class="data-item">
+          <strong>${hw.title}</strong><br>
+          Subject: ${hw.subject} | Class: ${hw.class}<br>
+          Due: ${new Date(hw.dueDate).toLocaleDateString()}<br>
+          <span class="small">${hw.description}</span>
+        </div>
+      `).join('') || '<p>No pending homework 🎉</p>'}
+    `;
+  }
+  
+  else if (section === 'attendance') {
+    content.innerHTML = `
+      <h2>📅 My Attendance</h2>
+      <p class="small">Your attendance records</p>
+      
+      <div class="stat-card">
+        <div class="small">Overall Attendance</div>
+        <h3>${dashboardData.attendance.percentage}%</h3>
+        <p>Present: ${dashboardData.attendance.presentDays} days | Absent: ${dashboardData.attendance.totalDays - dashboardData.attendance.presentDays} days</p>
+      </div>
+      
+      <h3>Recent Attendance Records</h3>
+      ${dashboardData.attendance.records.map(att => `
+        <div class="data-item" style="border-left-color:${att.status === 'Present' ? '#4caf50' : '#ef4444'}">
+          <strong>${new Date(att.date).toLocaleDateString()}</strong> – 
+          <span style="color:${att.status === 'Present' ? '#4caf50' : '#ef4444'};font-weight:700">
+            ${att.status.toUpperCase()}
+          </span><br>
+          <span class="small">Class: ${att.class}</span>
+        </div>
+      `).join('') || '<p>No attendance records yet</p>'}
+    `;
+  }
+  
+  else if (section === 'marks') {
+    loadMarks();
+  }
+  
+  else if (section === 'homework') {
+    const pending = dashboardData.homework.filter(hw => new Date(hw.dueDate) >= new Date());
+    const completed = dashboardData.homework.filter(hw => new Date(hw.dueDate) < new Date());
+    
+    content.innerHTML = `
+      <h2>📝 My Homework</h2>
+      <p class="small">All homework assigned to your class</p>
+      
+      <h3>Pending (${pending.length})</h3>
+      ${pending.map(hw => `
+        <div class="data-item">
+          <strong>${hw.title}</strong><br>
+          <span class="small">Subject: ${hw.subject}</span><br>
+          <span class="small">Due: ${new Date(hw.dueDate).toLocaleDateString()}</span><br>
+          <p style="margin-top:8px">${hw.description}</p>
+          ${hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" style="color:#7c3aed;text-decoration:none">📎 View Attachment</a>` : ''}
+        </div>
+      `).join('') || '<p>No pending homework! 🎉</p>'}
+      
+      <h3>Past Homework (${completed.length})</h3>
+      ${completed.slice(0, 5).map(hw => `
+        <div class="data-item" style="opacity:0.7">
+          <strong>${hw.title}</strong> – ${hw.subject}<br>
+          <span class="small">Due: ${new Date(hw.dueDate).toLocaleDateString()}</span>
+        </div>
+      `).join('') || '<p>No past homework</p>'}
+    `;
+  }
+  
+  else if (section === 'notifications') {
+    content.innerHTML = `
+      <h2>🔔 Notifications</h2>
+      <p class="small">All announcements from school</p>
+      
+      ${dashboardData.notifications.map(n => `
+        <div class="notification ${n.priority === 'important' || n.priority === 'emergency' ? 'important' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>${n.priority.toUpperCase()}</strong>
+            <span class="small">${new Date(n.sentAt).toLocaleString()}</span>
+          </div>
+          <p style="margin:8px 0 0 0">${n.message}</p>
+          <span class="small">Target: ${n.target}</span>
+        </div>
+      `).join('') || '<p>No notifications</p>'}
+    `;
+  }
+  
+  else if (section === 'bus') {
+    content.innerHTML = `
+      <h2>🚌 Bus Tracking</h2>
+      <p class="small">Track your school bus in real-time</p>
+      
+      ${dashboardData.buses.map(bus => `
+        <div class="bus-card">
+          <h3 style="margin:0 0 8px 0">${bus.busNumber}</h3>
+          <p><strong>Driver:</strong> ${bus.driverName || 'N/A'}</p>
+          <p><strong>Route:</strong> ${bus.route || 'N/A'}</p>
+          <p><strong>Status:</strong> 
+            <span style="font-weight:700;color:${
+              bus.status === 'on-time' ? '#4caf50' : 
+              bus.status === 'delayed' ? '#ff9800' : '#2196f3'
+            }">
+              ${bus.status.toUpperCase()}
+            </span>
+          </p>
+          <span class="small">Last updated: ${new Date(bus.updatedAt).toLocaleString()}</span>
+        </div>
+      `).join('') || '<p>No bus information available</p>'}
+    `;
+  }
+  
+  else if (section === 'timetable') {
+    loadTimetable();
+  }
+}
+
+async function loadMarks() {
+  const content = document.getElementById('mainContent');
+  content.innerHTML = '<h2>📈 My Marks</h2><p>Loading...</p>';
+  
+  try {
+    const marksData = await apiCall('/student/marks', 'GET');
+    const marks = marksData.marks || [];
+    
+    if (marks.length === 0) {
+      content.innerHTML = `
+        <h2>📈 My Marks</h2>
+        <p class="small">Your exam scores and performance</p>
+        <div class="data-item">
+          <p>No marks uploaded yet. Check back later!</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Group marks by exam type
+    const groupedMarks = {};
+    marks.forEach(m => {
+      const key = `${m.examType} - ${m.subject}`;
+      if (!groupedMarks[key]) {
+        groupedMarks[key] = [];
+      }
+      groupedMarks[key].push(m);
+    });
+    
+    // Calculate overall statistics
+    const totalMarks = marks.reduce((sum, m) => sum + m.marks, 0);
+    const totalMaxMarks = marks.reduce((sum, m) => sum + m.maxMarks, 0);
+    const percentage = totalMaxMarks > 0 ? ((totalMarks / totalMaxMarks) * 100).toFixed(1) : 0;
+    
+    content.innerHTML = `
+      <h2>📈 My Marks</h2>
+      <p class="small">Your exam scores and performance</p>
+      
+      <div class="stat-card">
+        <div class="small">Overall Performance</div>
+        <h3>${percentage}%</h3>
+        <p>Total: ${totalMarks} / ${totalMaxMarks} marks across ${marks.length} exams</p>
+      </div>
+      
+      <h3>Detailed Marks</h3>
+      <table class="marks-table">
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Exam Type</th>
+            <th>Marks Obtained</th>
+            <th>Max Marks</th>
+            <th>Percentage</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${marks.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).map(m => {
+            const perc = ((m.marks / m.maxMarks) * 100).toFixed(1);
+            const grade = perc >= 90 ? 'A+' : perc >= 80 ? 'A' : perc >= 70 ? 'B' : perc >= 60 ? 'C' : perc >= 50 ? 'D' : 'F';
+            return `
+              <tr>
+                <td><strong>${m.subject}</strong></td>
+                <td>${m.examType}</td>
+                <td style="color:#7c3aed;font-weight:700">${m.marks}</td>
+                <td>${m.maxMarks}</td>
+                <td>
+                  <strong style="color:${perc >= 75 ? '#22c55e' : perc >= 50 ? '#f59e0b' : '#ef4444'}">
+                    ${perc}% (${grade})
+                  </strong>
+                </td>
+                <td><span class="small">${new Date(m.uploadedAt).toLocaleDateString()}</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+      
+      <div style="margin-top:20px;padding:14px;background:#f0f9ff;border-radius:8px;border-left:4px solid #0ea5e9">
+        <strong>Grading System:</strong> A+ (90-100%) | A (80-89%) | B (70-79%) | C (60-69%) | D (50-59%) | F (<50%)
+      </div>
+    `;
+  } catch (error) {
+    content.innerHTML = `
+      <h2>📈 My Marks</h2>
+      <div class="data-item" style="border-left-color:#ef4444">
+        <p>Failed to load marks: ${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+async function loadTimetable() {
+  const content = document.getElementById('mainContent');
+  content.innerHTML = '<h2>📚 My Timetable</h2><p>Loading...</p>';
+  
+  try {
+    const timetable = await apiCall('/student/timetable', 'GET');
+    
+    if (!timetable.schedule) {
+      content.innerHTML = `
+        <h2>📚 My Timetable</h2>
+        <p class="small">Your class timetable</p>
+        <div class="data-item">
+          <p>Timetable not available yet. Please contact your teacher.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    content.innerHTML = `
+      <h2>📚 My Timetable</h2>
+      <p class="small">Class: ${timetable.class}</p>
+      
+      <div class="timetable-grid">
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Schedule</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${timetable.schedule.map(day => `
+              <tr>
+                <td><strong>${day.day}</strong></td>
+                <td>
+                  ${day.periods.map(p => `
+                    <div style="margin-bottom:8px;padding:8px;background:#f0f4ff;border-radius:4px">
+                      <strong>${p.subject}</strong> - ${p.teacher}<br>
+                      <small>${p.startTime} - ${p.endTime}</small>
+                    </div>
+                  `).join('')}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    content.innerHTML = `
+      <h2>📚 My Timetable</h2>
+      <div class="data-item" style="border-left-color:#ef4444">
+        <p>Failed to load timetable: ${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// Initialize
+loadDashboardData();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Registration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #ffffff);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 500px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 96, 100, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            background-color: #006064;
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            margin-top: 0;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #006064;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #006064;
+            box-shadow: 0 0 5px rgba(0, 96, 100, 0.3);
+        }
+
+        button[type="submit"] {
+            margin-top: 25px;
+            padding: 12px;
+            background-color: #006064;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #004d4d;
+        }
+
+        button[type="submit"]:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: #006064;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success {
+            color: #2e7d32;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 6px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Registration</h1>
+        
+        <div class="error" id="errorMsg"></div>
+        <div class="success" id="successMsg"></div>
+        
+        <form id="registrationForm">
+            <label for="schoolName">School Name:</label>
+            <input type="text" id="schoolName" name="schoolName" required 
+                   placeholder="e.g., Green Valley School">
+
+            <label for="schoolId">School ID:</label>
+            <input type="text" id="schoolId" name="schoolId" required 
+                   placeholder="e.g., GVS001 (unique identifier)">
+
+            <label for="adminUsername">Admin Username:</label>
+            <input type="text" id="adminUsername" name="adminUsername" required
+                   placeholder="e.g., admin or principal">
+
+            <label for="schoolPwd">School Password:</label>
+            <input type="password" id="schoolPwd" name="schoolPwd" required 
+                   minlength="6" placeholder="Minimum 6 characters">
+
+            <label for="confirmSchoolPwd">Confirm Password:</label>
+            <input type="password" id="confirmSchoolPwd" name="confirmSchoolPwd" required
+                   placeholder="Re-enter your password">
+
+            <button type="submit" id="registerBtn">Register School</button>
+        </form>
+        
+        <div class="back-link">
+            <a href="project.html">← Go Back to Login Page</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        
+        const registrationForm = document.getElementById('registrationForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const registerBtn = document.getElementById('registerBtn');
+
+        registrationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            console.log('Form submitted!'); // Debug log
+            
+            // Hide messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Get form values
+            const schoolName = document.getElementById('schoolName').value.trim();
+            const schoolId = document.getElementById('schoolId').value.trim();
+            const adminUsername = document.getElementById('adminUsername').value.trim();
+            const schoolPwd = document.getElementById('schoolPwd').value;
+            const confirmPwd = document.getElementById('confirmSchoolPwd').value;
+
+            console.log('Form data:', { schoolName, schoolId, adminUsername }); // Debug log
+
+            // Validate password match
+            if (schoolPwd !== confirmPwd) {
+                errorMsg.textContent = 'Passwords do not match!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Validate password length
+            if (schoolPwd.length < 6) {
+                errorMsg.textContent = 'Password must be at least 6 characters!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Disable button
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Registering...';
+
+            try {
+                console.log('Making API call...'); // Debug log
+                
+                const response = await fetch(`${API_URL}/auth/register/school`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        schoolName,
+                        schoolId,
+                        adminUsername,
+                        schoolPwd
+                    })
+                });
+
+                console.log('Response status:', response.status); // Debug log
+
+                const data = await response.json();
+                console.log('Response data:', data); // Debug log
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                // Show success
+                successMsg.textContent = `✅ Registration successful! School ID: ${data.schoolId}. Redirecting in 3 seconds...`;
+                successMsg.style.display = 'block';
+                
+                console.log('Success! Redirecting in 3 seconds...'); // Debug log
+                
+                // Clear form
+                registrationForm.reset();
+                
+                // Redirect after 3 seconds
+                setTimeout(() => {
+                    console.log('Redirecting now...'); // Debug log
+                    window.location.href = 'project.html';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                
+                // Show error
+                errorMsg.textContent = error.message || 'Registration failed. Please try again.';
+                errorMsg.style.display = 'block';
+                
+                // Re-enable button
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Register School';
+            }
+        });
+
+        // Test backend connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                console.log('Backend connection test:', data);
+                if (data.status === 'OK') {
+                    console.log('✅ Backend is running!');
+                }
+            } catch (error) {
+                console.error('❌ Cannot connect to backend:', error);
+                errorMsg.textContent = '⚠️ Warning: Cannot connect to backend. Make sure server is running on port 5000.';
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

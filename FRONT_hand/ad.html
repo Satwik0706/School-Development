@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin Dashboard – Smart School</title>
+
+<style>
+:root{
+  --bg:#0a0f1f; --card:#ffffff;
+  --accent1:#6366f1; --accent2:#ec4899;
+  --accent3:#0ea5e9; --accent4:#f59e0b;
+  --muted:#6b7280; --radius:16px;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui;margin:0;padding:0}
+body{
+  background:linear-gradient(180deg,#0a0f1f,#111b33);
+  color:white
+}
+.container{max-width:1300px;margin:18px auto;padding:18px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+header h1{font-size:1.8rem;font-weight:800}
+
+.btn{
+  padding:10px 14px;border:none;border-radius:10px;
+  font-weight:600;cursor:pointer;
+}
+.btn.primary{
+  background:linear-gradient(90deg,var(--accent1),var(--accent3));
+  color:white
+}
+.btn.ghost{background:#eef2ff}
+
+.layout{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:20px
+}
+.sidebar{
+  background:rgba(255,255,255,0.05);
+  padding:16px;border-radius:16px
+}
+.nav-btn{
+  width:100%;padding:10px;border-radius:10px;
+  border:none;margin-bottom:8px;
+  cursor:pointer;text-align:left;
+}
+.nav-btn.active{
+  background:linear-gradient(90deg,var(--accent1),var(--accent2));
+  color:white
+}
+
+.content{
+  background:white;color:#071326;
+  border-radius:16px;padding:20px;
+  min-height:600px
+}
+.label{font-weight:600;font-size:0.9rem}
+.input,.textarea{
+  width:100%;padding:10px;margin:6px 0;
+  border-radius:8px;border:1px solid #dbeafe
+}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.success-msg,.error-msg{
+  padding:10px;border-radius:8px;margin:10px 0;display:none
+}
+.success-msg.show{display:block;background:#dcfce7}
+.error-msg.show{display:block;background:#fee2e2}
+.data-item{
+  background:#f8fafc;padding:12px;border-radius:8px;
+  margin-bottom:8px;border-left:4px solid var(--accent1)
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+  <h1>🎓 Admin Dashboard – Smart School</h1>
+  <button class="btn primary" onclick="logout()">Logout</button>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <button class="nav-btn active" onclick="loadPanel('dashboard',event)">📊 Dashboard</button>
+  <button class="nav-btn" onclick="loadPanel('teacher',event)">👨‍🏫 Create Teacher</button>
+  <button class="nav-btn" onclick="loadPanel('class',event)">🏫 Create Class</button>
+  <button class="nav-btn" onclick="loadPanel('student',event)">👨‍🎓 Create Student</button>
+  <button class="nav-btn" onclick="loadPanel('timetable',event)">🗓️ Create Timetable</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content" id="panel"></div>
+
+</div>
+</div>
+
+<script>
+const API_URL='http://localhost:5000/api';
+const token=localStorage.getItem('token');
+
+if(!token){
+  alert("Login first");
+  location.href="project.html";
+}
+
+function logout(){
+  localStorage.clear();
+  location.href="project.html";
+}
+
+function showSuccess(msg){
+  document.getElementById('successMsg').textContent=msg;
+  document.getElementById('successMsg').classList.add('show');
+}
+function showError(msg){
+  document.getElementById('errorMsg').textContent=msg;
+  document.getElementById('errorMsg').classList.add('show');
+}
+
+async function apiCall(url,method='GET',data){
+  const res=await fetch(API_URL+url,{
+    method,
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':`Bearer ${token}`
+    },
+    body:data?JSON.stringify(data):null
+  });
+  const json=await res.json();
+  if(!res.ok) throw new Error(json.error);
+  return json;
+}
+
+function loadPanel(type,e){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+
+  const p=document.getElementById('panel');
+
+  /* DASHBOARD */
+  if(type==='dashboard'){
+    p.innerHTML=`<h2>📊 Dashboard</h2><p>Welcome Admin</p>`;
+  }
+
+  /* CREATE TEACHER */
+  if(type==='teacher'){
+    p.innerHTML=`
+    <h2>Create Teacher</h2>
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+    <div class="grid">
+      <input class="input" id="tName" placeholder="Name">
+      <input class="input" id="tSub" placeholder="Subject">
+      <input class="input" id="tPhone" placeholder="Phone">
+      <input class="input" id="tPass" placeholder="Password">
+    </div>
+    <button class="btn primary" onclick="createTeacher()">Create</button>`;
+  }
+
+  /* CREATE CLASS */
+  if(type==='class'){
+    p.innerHTML=`
+    <h2>Create Class</h2>
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+    <input class="input" id="cName" placeholder="Class Name">
+    <button class="btn primary" onclick="createClass()">Create</button>`;
+  }
+
+  /* CREATE STUDENT */
+  if(type==='student'){
+    p.innerHTML=`
+    <h2>Create Student</h2>
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+    <div class="grid">
+      <input class="input" id="sName" placeholder="Name">
+      <input class="input" id="sRoll" placeholder="Roll No">
+      <input class="input" id="sClass" placeholder="Class">
+      <input class="input" id="sParent" placeholder="Parent Phone">
+    </div>
+    <button class="btn primary" onclick="createStudent()">Create</button>`;
+  }
+
+  /* TIMETABLE */
+  if(type==='timetable'){
+    p.innerHTML=`
+    <h2>🗓️ Create Timetable</h2>
+
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div class="grid">
+      <select class="input" id="ttClass" onchange="loadClassTeachers()"></select>
+      <select class="input" id="ttDay">
+        <option>Monday</option><option>Tuesday</option>
+        <option>Wednesday</option><option>Thursday</option>
+        <option>Friday</option>
+      </select>
+      <select class="input" id="ttPeriod">
+        <option value="1">Period 1</option>
+        <option value="2">Period 2</option>
+        <option value="3">Period 3</option>
+        <option value="4">Period 4</option>
+        <option value="5">Period 5</option>
+      </select>
+      <input class="input" id="ttSubject" placeholder="Subject">
+      <select class="input" id="ttTeacher"></select>
+    </div>
+
+    <button class="btn primary" onclick="saveTimetable()">Save</button>
+    <hr>
+    <button class="btn ghost" onclick="viewTimetable()">View Timetable</button>
+    <div id="timetableList"></div>`;
+
+    loadClassesForTimetable();
+  }
+}
+
+/* ===== API FUNCTIONS ===== */
+
+async function createTeacher(){
+  await apiCall('/teachers','POST',{
+    name:tName.value,subject:tSub.value,
+    phone:tPhone.value,password:tPass.value
+  });
+  showSuccess("Teacher Created");
+}
+
+async function createClass(){
+  await apiCall('/classes','POST',{className:cName.value});
+  showSuccess("Class Created");
+}
+
+async function createStudent(){
+  await apiCall('/students','POST',{
+    name:sName.value,rollNo:sRoll.value,
+    class:sClass.value,parentPhone:sParent.value
+  });
+  showSuccess("Student Created");
+}
+
+/* TIMETABLE LOGIC */
+
+async function loadClassesForTimetable(){
+  const classes=await apiCall('/classes');
+  ttClass.innerHTML='<option>Select Class</option>';
+  classes.forEach(c=>{
+    ttClass.innerHTML+=`<option value="${c.className}">${c.className}</option>`;
+  });
+}
+
+async function loadClassTeachers(){
+  const teachers=await apiCall(`/classes/${ttClass.value}/teachers`);
+  ttTeacher.innerHTML='<option>Select Teacher</option>';
+  teachers.forEach(t=>{
+    ttTeacher.innerHTML+=`<option value="${t.teacherId}">${t.name} (${t.subject})</option>`;
+  });
+}
+
+async function saveTimetable(){
+  await apiCall('/timetable','POST',{
+    className:ttClass.value,
+    day:ttDay.value,
+    period:ttPeriod.value,
+    subject:ttSubject.value,
+    teacherId:ttTeacher.value
+  });
+  showSuccess("Timetable Saved");
+}
+
+async function viewTimetable(){
+  const data=await apiCall(`/timetable/${ttClass.value}`);
+  timetableList.innerHTML=data.map(t=>`
+    <div class="data-item">
+      ${t.day} Period ${t.period}<br>
+      ${t.subject} – ${t.teacherName}
+    </div>`).join('');
+}
+
+loadPanel('dashboard',{target:document.querySelector('.nav-btn')});
+</script>
+</body>
+</html>
