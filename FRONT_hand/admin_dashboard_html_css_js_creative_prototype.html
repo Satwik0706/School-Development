@@ -6,6 +6,55 @@
 <title>Admin Dashboard – Smart School Management</title>
 
 <style>
+  .admin-card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.bus-form-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.input-group label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.input-group input, .input-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #f9f9f9;
+}
+
+.save-btn {
+    background: #00a37a;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.save-btn:hover {
+    background: #007a5c;
+}
 :root{
   --bg:#0a0f1f; --card:#ffffff;
   --accent1:#6366f1; --accent2:#ec4899;
@@ -471,29 +520,45 @@ function loadPanel(type) {
     </div>
     <button class='btn primary' style='margin-top:14px' onclick='sendNotification()'>Send Notification</button>`;
   }
-
-  else if (type === 'bus') {
+// Inside loadPanel function
+else if (type === 'bus') {
     el.innerHTML = `
-    <h2 class='section-title'>🚌 Bus Tracking</h2>
-    <p class='section-sub'>Update bus status and location.</p>
-    <div class='success-msg' id='successMsg'></div>
-    <div class='error-msg' id='errorMsg'></div>
-    <div class='grid'>
-      <div><label class='label'>Bus Number</label><input class='input' id='busNumber' placeholder='e.g., BUS-01'></div>
-      <div><label class='label'>Driver Name</label><input class='input' id='driverName'></div>
-      <div><label class='label'>Route</label><input class='input' id='busRoute'></div>
-      <div>
-        <label class='label'>Status</label>
-        <select class='input' id='busStatus'>
-          <option value='on-time'>On Time</option>
-          <option value='delayed'>Delayed</option>
-          <option value='arrived'>Arrived</option>
-        </select>
-      </div>
-    </div>
-    <button class='btn primary' style='margin-top:14px' onclick='updateBus()'>Update Bus Status</button>`;
-  }
+      <div class="admin-card">
+        <div class="card-header">
+            <h2 class="section-title"><i class="fas fa-bus"></i> Live Bus Controller</h2>
+            <p class="section-sub">Select a bus and click on the map to set its live location</p>
+        </div>
 
+        <div class="bus-form-row">
+            <div class="input-group">
+                <label>Select Bus</label>
+                <select id="busNumberSelect" class="input">
+                    <option value="BUS-101">Bus 101</option>
+                    <option value="BUS-102">Bus 102</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Latitude</label>
+                <input type="text" id="manualLat" class="input" readonly placeholder="Click map...">
+            </div>
+
+            <div class="input-group">
+                <label>Longitude</label>
+                <input type="text" id="manualLng" class="input" readonly placeholder="Click map...">
+            </div>
+            
+            <button class="save-btn" onclick="saveLocationToServer()">
+                <i class="fas fa-save"></i> Save Location
+            </button>
+        </div>
+
+        <div id="adminMap" style="height: 450px; width: 100%; margin-top: 15px; border-radius: 12px; border: 1px solid #ddd;"></div>
+      </div>`;
+    
+    // Initialize the special Admin Map
+    setTimeout(initAdminMap, 200);
+  }
   else if (type === 'analytics') {
     el.innerHTML = `
     <h2 class='section-title'>📈 Analytics Dashboard</h2>
@@ -748,12 +813,15 @@ async function sendNotification() {
     showError('❌ ' + error.message);
   }
 }
-
 async function updateBus() {
-  const busNumber = document.getElementById('busNumber').value.trim();
-  const driverName = document.getElementById('driverName').value.trim();
-  const route = document.getElementById('busRoute').value.trim();
-  const status = document.getElementById('busStatus').value;
+  // Check if elements exist first to prevent errors
+  const busNumEl = document.getElementById('busNumber');
+  const busStatEl = document.getElementById('busStatus');
+
+  if (!busNumEl || !busStatEl) return;
+
+  const busNumber = busNumEl.value.trim();
+  const status = busStatEl.value;
   
   if (!busNumber) {
     showError('Please enter bus number!');
@@ -761,19 +829,61 @@ async function updateBus() {
   }
   
   try {
+    // This calls your server.js /api/bus route
     await apiCall('/bus', 'POST', { 
       busNumber, 
-      driverName, 
-      route, 
       status,
-      location: { lat: 0, lng: 0 }
+      // We send a default location so the database entry is created
+      location: { lat: 20.5937, lng: 78.9629 } 
     });
     showSuccess('✅ Bus status updated successfully!');
   } catch (error) {
     showError('❌ ' + error.message);
   }
 }
+// ==================== LIVE TRACKING LOGIC ====================
+let map, busMarker, trackInterval;
 
+function initMap() {
+  const mapDiv = document.getElementById("map");
+  if (!mapDiv) return;
+
+  map = new google.maps.Map(mapDiv, {
+    zoom: 15,
+    center: { lat: 20.5937, lng: 78.9629 }, 
+  });
+
+  busMarker = new google.maps.Marker({
+    map: map,
+    icon: {
+      url: "https://maps.google.com/mapfiles/ms/icons/bus.png",
+      scaledSize: new google.maps.Size(32, 32)
+    }
+  });
+
+  startLivePolling();
+}
+
+function startLivePolling() {
+  if (trackInterval) clearInterval(trackInterval);
+  
+  trackInterval = setInterval(async () => {
+    const busNo = document.getElementById('busNumber')?.value;
+    if (!busNo) return;
+
+    try {
+      const data = await apiCall(`/bus/location/${busNo}`, 'GET');
+      if (data && data.location) {
+        const newPos = { lat: data.location.lat, lng: data.location.lng };
+        busMarker.setPosition(newPos);
+        map.panTo(newPos);
+      }
+    } catch (err) {
+      console.log("Polling: Waiting for bus location data...");
+    }
+  }, 3000); 
+}
+// =============================================================
 async function loadAnalytics() {
   const list = document.getElementById('analyticsList');
   list.innerHTML = 'Loading...';
@@ -797,7 +907,59 @@ async function loadAnalytics() {
 
 loadSchoolInfo();
 loadPanel('dashboard');
-</script>
+let adminMap, adminMarker;
 
+function initAdminMap() {
+    const mapDiv = document.getElementById("adminMap");
+    if (!mapDiv) return;
+
+    // Center of your city (e.g., India)
+    const defaultPos = { lat: 20.5937, lng: 78.9629 };
+
+    adminMap = new google.maps.Map(mapDiv, {
+        zoom: 12,
+        center: defaultPos,
+    });
+
+    adminMarker = new google.maps.Marker({
+        position: defaultPos,
+        map: adminMap,
+        draggable: true,
+        title: "Drag me to bus location"
+    });
+
+    // When the map is clicked, move the marker and update the text boxes
+    adminMap.addListener("click", (mapsMouseEvent) => {
+        const pos = mapsMouseEvent.latLng;
+        adminMarker.setPosition(pos);
+        document.getElementById("manualLat").value = pos.lat().toFixed(6);
+        document.getElementById("manualLng").value = pos.lng().toFixed(6);
+    });
+}
+
+async function saveLocationToServer() {
+    const busNum = document.getElementById("busNumberSelect").value;
+    const lat = document.getElementById("manualLat").value;
+    const lng = document.getElementById("manualLng").value;
+
+    if (!lat || !lng) {
+        alert("Please click on the map first!");
+        return;
+    }
+
+    try {
+        await apiCall('/bus/update-location', 'POST', {
+            busNumber: busNum,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+            status: 'on-time'
+        });
+        alert("✅ Bus " + busNum + " location updated in database!");
+    } catch (err) {
+        alert("Error saving: " + err.message);
+    }
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgD6bMfaDGkWnw0gJHdea6nE-uN0W3RsM" async defer></script>
 </body>
 </html>

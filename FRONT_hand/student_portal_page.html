@@ -143,11 +143,77 @@ let token = localStorage.getItem('token');
 let studentId = localStorage.getItem('studentId');
 let dashboardData = null;
 
+
 if (!token) {
   alert('Please login first!');
   window.location.href = 'project.html';
 }
+let map;
+let busMarker = null; // We keep this global so we can move it
+let trackInterval = null;
 
+function initBusMap() {
+  const mapDiv = document.getElementById("studentBusMap");
+  if (!mapDiv) return;
+
+  // 1. Create the map
+  map = new google.maps.Map(mapDiv, {
+    zoom: 15,
+    center: { lat: 20.5937, lng: 78.9629 }, // Default center
+    styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+  });
+
+  // 2. Start asking the server for the location
+  startStudentBusPolling();
+}
+
+function startStudentBusPolling() {
+  if (trackInterval) clearInterval(trackInterval);
+  
+  // Get the bus number from your dashboard data
+  const busNo = dashboardData?.buses[0]?.busNumber || 'BUS-01';
+
+  trackInterval = setInterval(async () => {
+    try {
+      // 3. GET request to your server route /api/bus/location/:busNumber
+      const data = await apiCall(`/bus/location/${busNo}`, 'GET');
+      
+      if (data && data.location) {
+        const newPos = { 
+          lat: parseFloat(data.location.lat), 
+          lng: parseFloat(data.location.lng) 
+        };
+
+        // 4. THE MOVEMENT LOGIC
+        if (busMarker) {
+          // Move the existing icon smoothly
+          busMarker.setPosition(newPos);
+        } else {
+          // Create the icon only once
+          busMarker = new google.maps.Marker({
+            position: newPos,
+            map: map,
+            title: "Your School Bus",
+            icon: {
+              url: "https://maps.google.com/mapfiles/ms/icons/bus.png",
+              scaledSize: new google.maps.Size(40, 40)
+            }
+          });
+        }
+        
+        // Optional: Keep the bus in the center of the view
+        map.panTo(newPos);
+        
+        document.getElementById('liveStatusText').textContent = "● Live: Signal Received";
+        document.getElementById('liveStatusText').style.color = "#22c55e";
+      }
+    } catch (err) {
+      console.error("GPS Polling error:", err);
+      document.getElementById('liveStatusText').textContent = "○ Signal Lost: Reconnecting...";
+      document.getElementById('liveStatusText').style.color = "#ef4444";
+    }
+  }, 3000); // Update every 3 seconds
+}
 function logout() {
   if (confirm('Logout?')) {
     localStorage.clear();
@@ -339,28 +405,29 @@ function loadSection(section) {
     `;
   }
   
-  else if (section === 'bus') {
+else if (section === 'bus') {
     content.innerHTML = `
-      <h2>🚌 Bus Tracking</h2>
-      <p class="small">Track your school bus in real-time</p>
+      <h2>🚌 Live Bus Tracking</h2>
+      <p class="small">Real-time location of your assigned school bus</p>
       
+      <div id="studentBusMap" style="height: 400px; width: 100%; border-radius: 14px; margin: 15px 0; border: 1px solid #ddd; background: #eee;"></div>
+      <div id="liveStatusText" class="small" style="color:var(--accent3); font-weight:bold; margin-bottom:10px;">Connecting to GPS...</div>
+
       ${dashboardData.buses.map(bus => `
         <div class="bus-card">
           <h3 style="margin:0 0 8px 0">${bus.busNumber}</h3>
-          <p><strong>Driver:</strong> ${bus.driverName || 'N/A'}</p>
-          <p><strong>Route:</strong> ${bus.route || 'N/A'}</p>
           <p><strong>Status:</strong> 
-            <span style="font-weight:700;color:${
-              bus.status === 'on-time' ? '#4caf50' : 
-              bus.status === 'delayed' ? '#ff9800' : '#2196f3'
-            }">
+            <span style="font-weight:700;color:${bus.status === 'on-time' ? '#4caf50' : '#ff9800'}">
               ${bus.status.toUpperCase()}
             </span>
           </p>
-          <span class="small">Last updated: ${new Date(bus.updatedAt).toLocaleString()}</span>
+          <span class="small">Last Update: ${new Date(bus.updatedAt).toLocaleString()}</span>
         </div>
       `).join('') || '<p>No bus information available</p>'}
     `;
+
+    // This "triggers" the map logic you just added at the bottom
+    setTimeout(initBusMap, 300);
   }
   
   else if (section === 'timetable') {
@@ -517,10 +584,68 @@ async function loadTimetable() {
     `;
   }
 }
+// ... end of your other functions ...
 
-// Initialize
-loadDashboardData();
+// ==================== PASTE ALL THIS HERE ====================
+function initBusMap() {
+  const mapDiv = document.getElementById("studentBusMap");
+  if (!mapDiv) return;
+
+  map = new google.maps.Map(mapDiv, {
+    zoom: 15,
+    center: { lat: 20.5937, lng: 78.9629 }, 
+  });
+
+  busMarker = new google.maps.Marker({
+    map: map,
+    icon: {
+      url: "https://maps.google.com/mapfiles/kml/shapes/bus.png",
+      scaledSize: new google.maps.Size(32, 32)
+    }
+  });
+  startStudentBusPolling();
+}
+function startStudentBusPolling() {
+  // 1. Get the correct bus number from your dashboard data
+  const busNo = dashboardData?.buses[0]?.busNumber || 'BUS-101'; 
+
+  // 2. Clear any old intervals to prevent memory leaks
+  if (trackInterval) clearInterval(trackInterval);
+
+  // 3. Start the "Live Heartbeat"
+  trackInterval = setInterval(async () => {
+    try {
+      // Fetch fresh coordinates from the server
+      const data = await apiCall(`/bus/location/${busNo}`, 'GET');
+      
+      if (data && data.location) {
+        const newPos = { 
+            lat: parseFloat(data.location.lat), 
+            lng: parseFloat(data.location.lng) 
+        };
+
+        // 4. MOVE THE MARKER (This is what makes it move!)
+        if (busMarker) {
+          busMarker.setPosition(newPos);
+          // Optional: Keep the bus in the center of the screen
+          // map.panTo(newPos); 
+        }
+        
+        document.getElementById('liveStatusText').textContent = "Signal Live: Updating every 3s";
+      }
+    } catch (err) {
+      console.log("GPS signal interrupted...");
+      document.getElementById('liveStatusText').textContent = "Searching for GPS...";
+    }
+  }, 3000); // 3000ms = 3 seconds
+}
+// =============================================================
+
+// Final execution
+  loadDashboardData();
 </script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgD6bMfaDGkWnw0gJHdea6nE-uN0W3RsM"></script>
 
 </body>
 </html>

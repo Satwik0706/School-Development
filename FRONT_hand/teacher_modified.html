@@ -951,106 +951,137 @@ function copyNumber(phoneNumber) {
         showMsg('Failed to load messages', 'error');
       }
     }
+// ==================== TIMETABLE ====================
 
-    // ==================== TIMETABLE ====================
-    async function loadClassesForTT() {
-      try {
-        const classes = await apiCall('/classes', 'GET');
-        const select = document.getElementById('ttClass');
-        
-        if (!select) return;
-        
-        select.innerHTML = '<option value="">-- Select Class --</option>';
-        
-        if (classes.length === 0) {
-          select.innerHTML += '<option value="" disabled>No classes created yet</option>';
-          return;
-        }
-        
-        classes.forEach(c => {
-          select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
-        });
-      } catch (error) {
-        showMsg('Failed to load classes', 'error');
-      }
+/**
+ * Loads available classes from the database into the dropdown menu.
+ */
+async function loadClassesForTT() {
+  try {
+    const classes = await apiCall('/classes', 'GET');
+    const select = document.getElementById('ttClass');
+    
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    if (classes.length === 0) {
+      select.innerHTML += '<option value="" disabled>No classes created yet</option>';
+      return;
     }
+    
+    classes.forEach(c => {
+      select.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+    });
+  } catch (error) {
+    showMsg('Failed to load classes', 'error');
+  }
+}
 
-    async function generateTimetable() {
-      const className = document.getElementById('ttClass').value;
-      const subjectsText = document.getElementById('ttSubjects').value;
-      const startTime = document.getElementById('ttStart').value;
-      const endTime = document.getElementById('ttEnd').value;
-      const periodDuration = document.getElementById('ttDuration').value;
-      const breakTime = document.getElementById('ttBreak').value;
+/**
+ * Gathers inputs and sends a request to the Gemini AI backend to generate a schedule.
+ */
+async function generateTimetable() {
+  const className = document.getElementById('ttClass').value;
+  const subjectsText = document.getElementById('ttSubjects').value;
+  const startTime = document.getElementById('ttStart').value;
+  const endTime = document.getElementById('ttEnd').value;
+  const periodDuration = document.getElementById('ttDuration').value;
+  const breakTime = document.getElementById('ttBreak').value;
 
-      if (!className || !subjectsText) {
-        showMsg('Please fill class and subjects', 'error');
-        return;
+  // Validation: Ensure required fields are not empty
+  if (!className || !subjectsText) {
+    showMsg('Please select a class and enter subjects', 'error');
+    return;
+  }
+
+  // 1. Correct Formatting: Convert "Math-Mr.X, Science-Ms.Y" string into an object array
+  const subjects = subjectsText.split(',').map(s => {
+    const parts = s.trim().split('-');
+    return { 
+      name: parts[0]?.trim() || 'General', 
+      teacher: parts[1]?.trim() || 'Staff'
+    };
+  });
+
+  const btn = document.getElementById('genTTBtn');
+
+  try {
+    // 2. UI Feedback: Disable button and show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span>🤖 Gemini is thinking...</span>';
+    showMsg('Generating optimized timetable with AI...', 'success');
+
+    // 3. API Call: Matches your server.js expected payload
+    const result = await apiCall('/timetable/generate', 'POST', {
+      class: className,
+      subjects, 
+      timing: { 
+        startTime, 
+        endTime, 
+        periodDuration: parseInt(periodDuration), 
+        breakTime 
       }
+    });
 
-      const subjects = subjectsText.split(',').map(s => {
-        const [name, teacher] = s.trim().split('-');
-        return { 
-          name: name.trim(), 
-          teacher: teacher?.trim() || 'Unknown',
-          teacherId: `T${Math.random().toString(36).substr(2, 9)}`
-        };
-      });
+    showMsg('✅ Timetable generated successfully!', 'success');
+    displayTimetable(result.timetable);
+  } catch (error) {
+    console.error("Timetable Error:", error);
+    showMsg('AI Error: ' + error.message, 'error');
+  } finally {
+    // 4. Cleanup: Reset button state
+    btn.disabled = false;
+    btn.innerHTML = 'Generate Timetable';
+  }
+}
 
-      try {
-        document.getElementById('genTTBtn').disabled = true;
-        showMsg('Generating timetable with AI... Please wait', 'success');
-
-        const result = await apiCall('/timetable/generate', 'POST', {
-          class: className,
-          subjects,
-          timing: { startTime, endTime, periodDuration, breakTime }
-        });
-
-        showMsg('Timetable generated successfully!', 'success');
-        displayTimetable(result.timetable);
-        document.getElementById('genTTBtn').disabled = false;
-      } catch (error) {
-        showMsg('Failed to generate timetable: ' + error.message, 'error');
-        document.getElementById('genTTBtn').disabled = false;
-      }
-    }
-
-    function displayTimetable(timetable) {
-      const view = document.getElementById('timetableView');
-      
-      view.innerHTML = `
-        <div class="card" style="margin-top:20px">
-          <h3>Generated Timetable - ${timetable.class}</h3>
-          <div class="timetable-grid">
-            <table>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Periods</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${timetable.schedule.map(day => `
-                  <tr>
-                    <td><strong>${day.day}</strong></td>
-                    <td>
-                      ${day.periods.map(p => `
-                        <div style="margin-bottom:8px;padding:8px;background:#f0f4ff;border-radius:4px">
-                          <strong>${p.subject}</strong> - ${p.teacher}<br>
-                          <small>${p.startTime} - ${p.endTime}</small>
+/**
+ * Renders the AI-generated timetable into the HTML table.
+ */
+function displayTimetable(timetable) {
+  const view = document.getElementById('timetableView');
+  if (!view) return;
+  
+  view.innerHTML = `
+    <div class="card" style="margin-top:20px; border-top: 4px solid var(--accent1);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+        <h3 style="margin:0">🗓️ Schedule: Class ${timetable.class}</h3>
+        <button class="btn" onclick="window.print()" style="font-size:12px">Print PDF</button>
+      </div>
+      <div class="timetable-grid">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 120px;">Day</th>
+              <th>Periods & Subjects</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${timetable.schedule.map(day => `
+              <tr>
+                <td style="vertical-align: top;"><strong>${day.day}</strong></td>
+                <td>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;">
+                    ${day.periods.map(p => `
+                      <div style="padding:10px; background:#f0f4ff; border-radius:8px; border-left:3px solid var(--accent2)">
+                        <div style="font-weight:700; color:#1e293b">${p.subject}</div>
+                        <div style="font-size:0.8rem; color:#64748b">${p.teacher}</div>
+                        <div style="font-size:0.75rem; margin-top:4px; font-weight:600; color:var(--accent1)">
+                          ${p.startTime} - ${p.endTime}
                         </div>
-                      `).join('')}
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
+                      </div>
+                    `).join('')}
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
     // ==================== CONTACT HELPER ====================
 
     // ==================== HELPERS ====================

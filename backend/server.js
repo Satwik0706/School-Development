@@ -19,34 +19,30 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ==================== AI HELPER ====================
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+// ==================== GOOGLE GEMINI AI HELPER ====================
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-async function callClaudeAPI(prompt, systemPrompt = '') {
+async function callGeminiAI(prompt, systemInstruction = "") {
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const model = genAI.getGenerativeModel({ 
+      // CHANGE: Use "gemini-2.5-flash" (current stable) 
+      // or "gemini-2.0-flash" if your key is strictly 2.0
+      model: "gemini-2.5-flash", 
+      systemInstruction: systemInstruction 
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-    const data = await response.json();
-    return data.content[0].text;
+    // Optional: Add generationConfig if the output needs to be strictly JSON
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error('Claude API Error:', error);
+    // If 404 persists, the key might be restricted to a specific version.
+    // Try "gemini-1.5-flash-latest" as a fallback.
+    console.error("Gemini AI Error:", error);
     throw error;
   }
 }
-
 // ==================== DB CONNECTION ====================
 mongoose
   .connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/school_management')
@@ -175,18 +171,23 @@ const messageSchema = new mongoose.Schema({
   message: String,
   read: { type: Boolean, default: false },
   sentAt: { type: Date, default: Date.now }
-});
-
+});// Ensure your busSchema looks like this
 const busSchema = new mongoose.Schema({
   schoolId: String,
-  busNumber: String,
-  driverName: String,
-  route: String,
-  status: String,
-  location: { lat: Number, lng: Number },
+  busNumber: { type: String, required: true },
+  driverName: String, // Add this if missing
+  route: String,      // Add this if missing
+  status: { 
+    type: String, 
+    enum: ['on-time', 'delayed', 'cancelled'], 
+    default: 'on-time' 
+  },
+  location: { 
+    lat: { type: Number, default: 20.5937 }, 
+    lng: { type: Number, default: 78.9629 } 
+  },
   updatedAt: { type: Date, default: Date.now }
 });
-
 // FIXED: Added marks schema
 const marksSchema = new mongoose.Schema({
   schoolId: String,
@@ -238,7 +239,6 @@ app.post('/api/auth/register/school', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/auth/login/admin', async (req, res) => {
   try {
     const school = await School.findOne({ schoolId: req.body.School_Id });
@@ -263,54 +263,40 @@ app.post('/api/auth/login/admin', async (req, res) => {
   }
 });
 
+// Teacher Login
 app.post('/api/auth/login/teacher', async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ teacherId: req.body.Teacher_ID });
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
-
     const ok = await bcrypt.compare(req.body.Teacher_Password, teacher.password);
     if (!ok) return res.status(401).json({ error: 'Wrong password' });
 
-    const token = jwt.sign(
-      { teacherId: teacher.teacherId, schoolId: teacher.schoolId, role: 'teacher' },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+    const token = jwt.sign({ teacherId: teacher.teacherId, schoolId: teacher.schoolId, role: 'teacher' }, process.env.JWT_SECRET || 'your-secret-key');
 
     res.json({ 
       token, 
+      userType: 'teacher', // Added this
       teacherId: teacher.teacherId, 
-      name: teacher.name,
-      subject: teacher.subject 
+      name: teacher.name 
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Student Login
 app.post('/api/auth/login/student', async (req, res) => {
   try {
-    const student = await Student.findOne({ 
-      studentId: req.body.Student_id,
-      parentPhone: req.body.Phone_number 
-    });
-    
+    const student = await Student.findOne({ studentId: req.body.Student_id, parentPhone: req.body.Phone_number });
     if (!student) return res.status(404).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign(
-      { studentId: student.studentId, schoolId: student.schoolId, role: 'student' },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+    const token = jwt.sign({ studentId: student.studentId, schoolId: student.schoolId, role: 'student' }, process.env.JWT_SECRET || 'your-secret-key');
 
     res.json({ 
       token, 
+      userType: 'student', // Added this
       studentId: student.studentId,
       name: student.name 
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ==================== ADMIN ROUTES ====================
@@ -483,21 +469,95 @@ app.post('/api/notifications', authMiddleware(['admin']), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ==================== UPDATED BUS SYSTEM ====================
+// --- ADD THIS HERE ---
+// Get all buses for the school (to fill the Admin dropdown)
+app.get('/api/bus/all', authMiddleware(['admin']), async (req, res) => {
+  try {
+    const buses = await Bus.find({ schoolId: req.user.schoolId });
+    res.json(buses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// ---------------------
 
-// Update Bus Status
+// Your existing app.post('/api/bus', ...) follows below...
+// 1. ADMIN: Create or Update Bus Details (Status, Driver, Route)
 app.post('/api/bus', authMiddleware(['admin']), async (req, res) => {
   try {
+    const { busNumber, driverName, route, status } = req.body;
+    
+    // This "upsert" logic creates the bus if it's new, or updates it if it exists
     const bus = await Bus.findOneAndUpdate(
-      { schoolId: req.user.schoolId, busNumber: req.body.busNumber },
+      { schoolId: req.user.schoolId, busNumber: busNumber },
       { 
-        ...req.body, 
-        schoolId: req.user.schoolId, 
-        updatedAt: new Date() 
+        $set: { 
+          driverName, 
+          route, 
+          status, 
+          updatedAt: new Date() 
+        } 
       },
       { upsert: true, new: true }
     );
 
-    res.json({ message: 'Bus status updated', bus });
+    res.json({ message: 'Bus information synced successfully', bus });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// This route saves the manually edited coordinates from the Admin Dashboard
+app.post('/api/bus/update-location', authMiddleware(['admin']), async (req, res) => {
+  try {
+    const { busNumber, lat, lng, status } = req.body;
+
+    // Validation: Ensure we are receiving numbers
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ error: 'Invalid coordinates received' });
+    }
+
+    const updatedBus = await Bus.findOneAndUpdate(
+      { 
+        schoolId: req.user.schoolId, 
+        busNumber: busNumber 
+      },
+      { 
+        $set: { 
+          "location.lat": lat, 
+          "location.lng": lng, 
+          status: status || 'on-time',
+          updatedAt: new Date() 
+        } 
+      },
+      { upsert: true, new: true } // Creates the bus if it doesn't exist
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Location synchronized with database',
+      data: updatedBus 
+    });
+  } catch (error) {
+    console.error('Bus update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 3. STUDENT: Fetch "Everything" (Status + GPS)
+app.get('/api/bus/location/:busNumber', authMiddleware(), async (req, res) => {
+  try {
+    const bus = await Bus.findOne({ 
+      schoolId: req.user.schoolId, 
+      busNumber: req.params.busNumber 
+    });
+    
+    if (!bus) return res.status(404).json({ error: 'Bus not found' });
+    
+    // This sends all data (Status, Location, Driver Name) to the Student
+    res.json(bus); 
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -708,12 +768,12 @@ app.get('/api/messages', authMiddleware(['teacher']), async (req, res) => {
   }
 });
 
-// Generate Timetable with AI
+// Generate Timetable with Gemini AI
 app.post('/api/timetable/generate', authMiddleware(['teacher', 'admin']), async (req, res) => {
   try {
     const { class: className, subjects, timing } = req.body;
 
-    const systemPrompt = `You are a school timetable generator. Create balanced schedules avoiding teacher conflicts.`;
+    const systemPrompt = `You are a school timetable generator. Create balanced schedules avoiding teacher conflicts. Always return data in strict JSON format.`;
     
     const prompt = `Generate a weekly timetable for class ${className}.
 
@@ -725,29 +785,25 @@ Timing:
 - Each period: ${timing.periodDuration} minutes
 - Break time: ${timing.breakTime}
 
-Requirements:
-1. No teacher should have overlapping classes
-2. Balance subjects across the week
-3. Consider energy levels (hard subjects in morning)
-4. Include breaks
-
 Return ONLY a JSON object with this structure:
 {
   "schedule": [
     {
       "day": "Monday",
       "periods": [
-        {"subject": "Math", "teacher": "Mr. X", "teacherId": "T123", "startTime": "08:00", "endTime": "08:45"},
-        ...
+        {"subject": "Math", "teacher": "Mr. X", "teacherId": "T123", "startTime": "08:00", "endTime": "08:45"}
       ]
-    },
-    ...
+    }
   ]
 }`;
 
-    const aiResponse = await callClaudeAPI(prompt, systemPrompt);
+    // 1. CHANGE: callGeminiAI instead of callClaudeAPI
+    const aiResponse = await callGeminiAI(prompt, systemPrompt);
     
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    // 2. CLEANUP: Gemini often wraps JSON in backticks (```json), we must remove them
+    const cleanJson = aiResponse.replace(/```json|```/g, "").trim();
+    
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Invalid AI response format');
     
     const timetableData = JSON.parse(jsonMatch[0]);
@@ -763,7 +819,7 @@ Return ONLY a JSON object with this structure:
     );
 
     res.json({ 
-      message: 'Timetable generated successfully', 
+      message: 'Timetable generated successfully via Gemini', 
       timetable 
     });
   } catch (error) {
@@ -771,7 +827,6 @@ Return ONLY a JSON object with this structure:
     res.status(500).json({ error: error.message });
   }
 });
-
 // Get Timetable
 app.get('/api/timetable/:class', authMiddleware(), async (req, res) => {
   try {
